@@ -283,10 +283,10 @@
   ------------------------------------------------------------------- */
   .bj-half-wrap {
     position: relative; width: 100%; max-width: 640px;
-    aspect-ratio: 4 / 3.3; margin: 6px auto 46px;
+    aspect-ratio: 4 / 2.5; margin: 6px auto 46px;
   }
   .bj-half-felt {
-    position: absolute; left: 4%; right: 4%; top: 19%; bottom: 2%;
+    position: absolute; left: 4%; right: 4%; top: 24%; bottom: 3%;
     border-radius: 0 0 50% 50% / 0 0 100% 100%;
     background: var(--felt);
     background-image:
@@ -298,6 +298,11 @@
     position: absolute; left: 50%; top: 2%; transform: translateX(-50%);
     display: flex; flex-direction: column; align-items: center; gap: 6px; z-index: 2; width: 80%;
   }
+  @keyframes dealCardFly {
+    from { opacity: 0; transform: translate(var(--dx, 0px), var(--dy, -30px)) scale(0.55) rotate(6deg); }
+    to { opacity: 1; transform: translate(0, 0) scale(1) rotate(0deg); }
+  }
+  .deal-fly { animation: dealCardFly 0.45s cubic-bezier(.2,.7,.3,1) both; }
 
   /* Sound toggle, top-right of the poker screen */
   .sound-toggle {
@@ -1187,11 +1192,16 @@ async function bjtResetTable() {
   }
 }
 
-function cardHtml(card, faceDown, animate, delayIndex) {
-  const animAttrs = animate ? ` style="animation-delay:${((delayIndex || 0) * 0.09).toFixed(2)}s"` : '';
-  if (faceDown) return `<div class="playing-card back${animate ? ' deal-anim' : ''}"${animAttrs}></div>`;
+function cardHtml(card, faceDown, animate, delayIndex, flyStyle) {
+  // flyStyle (CSS --dx/--dy custom props), when given, makes the card
+  // animate in from the dealer's direction instead of just fading in place —
+  // i.e. the dealer visibly "passing" the card out to that seat.
+  const delayCss = `animation-delay:${((delayIndex || 0) * 0.09).toFixed(2)}s;`;
+  const animClass = flyStyle ? ' deal-fly' : ' deal-anim';
+  const animAttrs = animate ? ` style="${delayCss}${flyStyle || ''}"` : '';
+  if (faceDown) return `<div class="playing-card back${animate ? animClass : ''}"${animAttrs}></div>`;
   const isRed = card.suit === '♥' || card.suit === '♦';
-  return `<div class="playing-card${isRed ? ' red' : ''}${animate ? ' deal-anim' : ''}"${animAttrs}><div class="pc-rank">${card.rank}</div><div class="pc-suit-big">${card.suit}</div></div>`;
+  return `<div class="playing-card${isRed ? ' red' : ''}${animate ? animClass : ''}"${animAttrs}><div class="pc-rank">${card.rank}</div><div class="pc-suit-big">${card.suit}</div></div>`;
 }
 
 function renderBjSeatPos(table, hand, seatIndex, mySeat, totalSeats, animate) {
@@ -1242,7 +1252,7 @@ function renderBjSeatPos(table, hand, seatIndex, mySeat, totalSeats, animate) {
         </div>
       ` : `<div class="poker-seat-chips">Bet ${p ? p.bet : (seat.bet || 0)}</div>`}
       ${p ? `
-        <div class="poker-seat-cards">${p.cards.map((c, i) => cardHtml(c, false, animate, visualIndex * 2 + i)).join('')}</div>
+        <div class="poker-seat-cards">${p.cards.map((c, i) => cardHtml(c, false, animate, visualIndex * 2 + i, bjDealFlyStyle(visualIndex, totalSeats))).join('')}</div>
         <div style="font-size:11px;color:${outcomeColor};font-weight:600;white-space:nowrap;">
           ${pv ? `${pv.total}${pv.isSoft ? ' (soft)' : ''}` : ''}${outcomeLabel ? ` — ${escapeHtml(outcomeLabel)}` : ''}
         </div>
@@ -1455,15 +1465,32 @@ function bjVisualOffset(visualIndex) {
   const n = Math.ceil(visualIndex / 2);
   return visualIndex % 2 === 1 ? n : -n;
 }
-function bjSeatStyle(visualIndex, totalSeats) {
+function bjSeatPoint(visualIndex, totalSeats) {
   const maxOffset = Math.max(1, Math.ceil((totalSeats - 1) / 2));
   const offset = bjVisualOffset(visualIndex);
   const maxAngleDeg = 78;
   const theta = (offset / maxOffset) * maxAngleDeg * Math.PI / 180;
-  const cx = 50, cy = 18, rx = 42, ry = 74;
+  const cx = 50, cy = 22, rx = 44, ry = 56;
   const left = cx + rx * Math.sin(theta);
   const top = cy + ry * Math.cos(theta);
+  return { left, top };
+}
+function bjSeatStyle(visualIndex, totalSeats) {
+  const { left, top } = bjSeatPoint(visualIndex, totalSeats);
   return `left:${left.toFixed(2)}%;top:${top.toFixed(2)}%;`;
+}
+// Where a card should start from so it looks like the dealer is flicking it
+// out to this seat: the direction from the seat back toward the dealer
+// (top-center of the table), as a short fixed-length translate. Returns a
+// CSS custom-property string ready to drop on the card's inline style.
+function bjDealFlyStyle(visualIndex, totalSeats) {
+  const { left, top } = bjSeatPoint(visualIndex, totalSeats);
+  const dealerX = 50, dealerY = 8;
+  const vx = dealerX - left, vy = dealerY - top;
+  const mag = Math.sqrt(vx * vx + vy * vy) || 1;
+  const travel = 70;
+  const dx = (vx / mag) * travel, dy = (vy / mag) * travel;
+  return `--dx:${dx.toFixed(1)}px;--dy:${dy.toFixed(1)}px;`;
 }
 
 // Runs every second while the Poker screen is up: (1) as a courtesy, times

@@ -183,6 +183,104 @@
   .seat-row + .seat-row { border-top: 1px solid rgba(239,228,198,0.08); }
   .seat-row.my-turn { background: var(--gold-dim); box-shadow: inset 0 0 0 1px rgba(206,160,63,0.4); }
   .seat-row.folded { opacity: 0.4; }
+
+  /* -------------------------------------------------------------------
+     Poker — oval table layout: seats ringed around a felt ellipse,
+     pot/community cards in the middle, you always at the bottom.
+  ------------------------------------------------------------------- */
+  .poker-oval-wrap {
+    position: relative; width: 100%; max-width: 620px;
+    aspect-ratio: 4 / 3; margin: 6px auto 22px;
+  }
+  .poker-oval {
+    position: absolute; inset: 7%;
+    border-radius: 50%;
+    background: var(--felt);
+    background-image:
+      radial-gradient(ellipse at 50% 28%, rgba(255,255,255,0.07), transparent 55%),
+      radial-gradient(ellipse at 50% 105%, rgba(0,0,0,0.3), transparent 65%);
+    box-shadow: 0 0 0 12px var(--rail), 0 0 0 14px var(--rail-light), 0 20px 50px rgba(0,0,0,0.55), inset 0 0 60px rgba(0,0,0,0.35);
+  }
+  .poker-seat-pos {
+    position: absolute; transform: translate(-50%, -50%);
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    width: 88px; text-align: center; z-index: 2;
+  }
+  .poker-seat-avatar-wrap { position: relative; width: 50px; height: 50px; border-radius: 50%; }
+  .poker-seat-pos.my-turn .poker-seat-avatar-wrap .avatar { box-shadow: 0 0 0 2px var(--gold-bright), 0 0 16px 2px var(--gold); }
+  .poker-seat-pos.folded { opacity: 0.4; }
+  .poker-timer-ring {
+    position: absolute; inset: -5px; border-radius: 50%; z-index: -1;
+    background: conic-gradient(var(--gold-bright) calc(var(--pct, 1) * 360deg), rgba(0,0,0,0.4) 0deg);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px));
+            mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px));
+    transition: background 1s linear;
+  }
+  .poker-timer-badge {
+    position: absolute; bottom: -4px; right: -4px; background: var(--ink);
+    color: var(--gold-bright); font-size: 9px; font-weight: 800; border-radius: 50%;
+    width: 16px; height: 16px; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 0 1px var(--gold); font-variant-numeric: tabular-nums;
+  }
+  .poker-seat-name {
+    font-size: 11px; font-weight: 700; color: var(--cream); white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; max-width: 88px;
+  }
+  .poker-seat-chips { font-size: 10px; color: var(--gold-bright); font-variant-numeric: tabular-nums; }
+  .poker-seat-bet {
+    font-size: 10px; color: var(--cream); background: rgba(0,0,0,0.45); border: 1px solid var(--border);
+    border-radius: 999px; padding: 1px 8px; font-variant-numeric: tabular-nums;
+  }
+  .poker-seat-tag { font-size: 10px; color: var(--text-tertiary); }
+  .poker-seat-cards { display: flex; gap: 2px; min-height: 42px; align-items: center; }
+  .poker-empty-seat {
+    width: 50px; height: 50px; border-radius: 50%; border: 1.5px dashed var(--border);
+    display: flex; align-items: center; justify-content: center; font-size: 9px; color: var(--text-tertiary);
+    background: rgba(0,0,0,0.18); cursor: pointer; text-align: center; line-height: 1.2;
+  }
+  .poker-dealer-puck-pos { position: absolute; transform: translate(-50%, -50%); z-index: 3; }
+  .poker-center {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    display: flex; flex-direction: column; align-items: center; gap: 8px; width: 78%; z-index: 1;
+  }
+  .poker-pot-badge {
+    background: rgba(0,0,0,0.4); border: 1px solid var(--border); border-radius: 999px;
+    padding: 4px 14px; font-size: 12px; color: var(--gold-bright); font-weight: 700;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .poker-win-banner {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    z-index: 10; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    animation: pokerWinIn 0.45s cubic-bezier(.2,1.4,.4,1) both; pointer-events: none;
+  }
+  .poker-win-cards { display: flex; margin-bottom: 2px; }
+  .poker-win-cards .playing-card { box-shadow: 0 6px 20px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,0,0,0.1); }
+  .poker-win-cards .playing-card:not(:first-child) { margin-left: -16px; }
+  .poker-win-word {
+    font-family: var(--font-display); font-size: 30px; font-weight: 800; letter-spacing: 0.04em;
+    background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.6));
+  }
+  .poker-win-amount { font-size: 14px; font-weight: 700; color: var(--cream); text-shadow: 0 2px 6px rgba(0,0,0,0.7); }
+  .poker-win-name { font-size: 11px; color: var(--text-secondary); text-shadow: 0 2px 6px rgba(0,0,0,0.7); }
+  @keyframes pokerWinIn {
+    from { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+    to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  }
+  @keyframes dealCardIn {
+    from { opacity: 0; transform: translateY(-14px) scale(0.5); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .deal-anim { animation: dealCardIn 0.3s ease both; }
+
+  /* Sound toggle, top-right of the poker screen */
+  .sound-toggle {
+    width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center;
+    justify-content: center; background: rgba(0,0,0,0.25); border: 1px solid var(--border);
+    color: var(--text-secondary); font-size: 15px; flex-shrink: 0;
+  }
+  .sound-toggle:hover { color: var(--cream); }
 </style>
 </head>
 <body>
@@ -227,11 +325,105 @@ const state = {
     myHoleCards: null,        // { cards, handNumber } from my own private doc
     lastAppliedHandNumber: null, // guards against applying the same hand's payout twice
     raiseAmount: null,        // draft "raise to" amount while it's my turn
+    // These three just track "what did we last play a sound for", so a sound
+    // fires once per real event instead of replaying on every re-render
+    // (the table re-renders every second for the turn timer).
+    lastSoundHandStreet: null,   // `${handNumber}:${street}` last heard
+    lastSoundWasMyTurn: false,
+    lastSoundResultHandNumber: null,
+    lastTickSecond: null,         // last countdown second we played a tick for
+    lastAnimatedHandStreet: null, // same idea, for the deal-in card animation
   },
 };
 
 let unsubEmployee = null;
 let unsubProfile = null;
+
+// ============================================================================
+// SOUND — small synthesized effects via the Web Audio API, so there are no
+// external audio files to host or license. Muted by default on first visit
+// (autoplay-blocked anyway until a click happens) and remembered per-browser
+// via localStorage; wrapped defensively since some embedded/legacy webviews
+// don't support AudioContext at all.
+// ============================================================================
+const Sound = {
+  ctx: null,
+  enabled: (() => {
+    try { return localStorage.getItem('casinoSoundEnabled') !== 'off'; } catch (e) { return true; }
+  })(),
+  setEnabled(on) {
+    this.enabled = on;
+    try { localStorage.setItem('casinoSoundEnabled', on ? 'on' : 'off'); } catch (e) {}
+  },
+  ensureCtx() {
+    if (!this.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      this.ctx = new AC();
+    }
+    if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+    return this.ctx;
+  },
+  // A short, filtered noise burst — reads as a card flick/riffle, no pitch.
+  noiseBurst(duration, volume, filterFreq) {
+    if (!this.enabled) return;
+    const ctx = this.ensureCtx();
+    if (!ctx) return;
+    try {
+      const bufferSize = Math.floor(ctx.sampleRate * duration);
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = filterFreq;
+      const gain = ctx.createGain();
+      gain.gain.value = volume;
+      src.connect(filter).connect(gain).connect(ctx.destination);
+      src.start();
+    } catch (e) { /* ignore */ }
+  },
+  tone(freq, startDelay, duration, volume, type) {
+    if (!this.enabled) return;
+    const ctx = this.ensureCtx();
+    if (!ctx) return;
+    try {
+      const t0 = ctx.currentTime + startDelay;
+      const osc = ctx.createOscillator();
+      osc.type = type || 'sine';
+      osc.frequency.value = freq;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, t0);
+      gain.gain.linearRampToValueAtTime(volume, t0 + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0008, t0 + duration);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t0);
+      osc.stop(t0 + duration + 0.02);
+    } catch (e) { /* ignore */ }
+  },
+  // One card landing — used repeatedly, staggered, for a whole deal.
+  cardFlick(delay) { setTimeout(() => this.noiseBurst(0.07, 0.22, 2200), Math.max(0, delay * 1000)); },
+  // Chips pushed forward — bet/call/raise/all-in.
+  chip() {
+    this.tone(820, 0, 0.09, 0.16, 'triangle');
+    this.tone(1300, 0.03, 0.08, 0.1, 'triangle');
+  },
+  // A fold — a soft, descending brush.
+  fold() { this.tone(300, 0, 0.18, 0.1, 'sine'); },
+  // My turn just started — a gentle two-note chime.
+  myTurn() {
+    this.tone(660, 0, 0.14, 0.14, 'sine');
+    this.tone(880, 0.1, 0.18, 0.14, 'sine');
+  },
+  // Last few seconds of a turn — a soft tick.
+  tick() { this.tone(1500, 0, 0.045, 0.1, 'square'); },
+  // Hand won — a short ascending arpeggio.
+  win() {
+    [660, 880, 1100, 1320].forEach((f, i) => this.tone(f, i * 0.09, 0.3, 0.15, 'triangle'));
+  },
+};
 
 function escapeHtml(str) {
   if (str == null) return '';
@@ -1060,6 +1252,7 @@ function attachBlackjackHandlers() {
 const POKER_TABLE_ID = 'main';
 const POKER_SMALL_BLIND = 10;
 const POKER_BIG_BLIND = 20;
+const POKER_TURN_LIMIT_MS = 30000; // 30s per turn — see pokerSeatStyle/checkPokerTurnTimeout below
 const POKER_RANK_ORDER = { '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,'J':11,'Q':12,'K':13,'A':14 };
 const POKER_HAND_NAMES = ['High Card','Pair','Two Pair','Three of a Kind','Straight','Flush','Full House','Four of a Kind','Straight Flush'];
 
@@ -1074,10 +1267,17 @@ let lastProcessedActionId = null;
 
 function enterPokerScreen() {
   state.poker.raiseAmount = null;
+  state.poker.lastSoundHandStreet = null;
+  state.poker.lastSoundWasMyTurn = false;
+  state.poker.lastSoundResultHandNumber = null;
+  state.poker.lastAnimatedHandStreet = null;
+  state.poker.lastTickSecond = null;
   unsubPokerTable = db.collection('pokerTables').doc(POKER_TABLE_ID).onSnapshot(snap => {
     state.poker.table = snap.exists ? snap.data() : { seats: Array(8).fill(null), dealerSeat: null, handNumber: 0, hand: null, requestedAction: null };
-    maybeRunHandLogic();
-    maybeApplyMyPayout();
+    // Same reasoning as the Blackjack listener: if either of these throws,
+    // render() must still run or the screen is left stuck on stale state.
+    try { maybeRunHandLogic(); } catch (e) { console.error('maybeRunHandLogic failed', e); }
+    try { maybeApplyMyPayout(); } catch (e) { console.error('maybeApplyMyPayout failed', e); }
     render();
   }, err => console.error('poker table listener error', err));
   if (state.user) {
@@ -1094,6 +1294,59 @@ function leavePokerScreen() {
   state.poker.table = null;
   state.poker.myHoleCards = null;
 }
+
+// A visual position (as a percentage point on the oval) for a seat, with
+// seat 0 of the *visual* ordering always placed at the bottom — i.e. "you",
+// when you're seated. Seats are then laid out clockwise from there. This is
+// just geometry (a point on an ellipse); it doesn't touch game state.
+function pokerSeatStyle(visualIndex, totalSeats, rx, ry) {
+  const theta = (visualIndex / totalSeats) * 2 * Math.PI;
+  const left = 50 + rx * Math.sin(theta);
+  const top = 50 + ry * Math.cos(theta);
+  return `left:${left.toFixed(2)}%;top:${top.toFixed(2)}%;`;
+}
+function pokerVisualIndex(seatIndex, mySeat, totalSeats) {
+  if (mySeat === -1) return seatIndex;
+  return (seatIndex - mySeat + totalSeats) % totalSeats;
+}
+
+// Runs every second while the Poker screen is up: (1) as a courtesy, times
+// myself out if it's my turn and I've blown past the limit, so it feels
+// instant rather than waiting on the runner; (2) as the real backstop, if
+// I'm the one running this hand, auto-acts for whichever seat has timed out
+// even if that player's own tab is gone. Both are safe to call constantly —
+// each is a no-op unless there's actually an overdue turn.
+function pokerTurnTimerTick() {
+  if (state.screen !== 'poker') return;
+  const table = state.poker.table;
+  const hand = table && table.hand;
+  if (!hand || hand.currentTurnSeat == null || !hand.turnStartedAt) return; // nothing ticking to show
+  const overdue = Date.now() - hand.turnStartedAt >= POKER_TURN_LIMIT_MS;
+  if (overdue) {
+    const mySeat = myPokerSeatIndex();
+    if (hand.currentTurnSeat === mySeat) {
+      const legal = pokerLegalActions(hand, mySeat);
+      if (legal) pokerSendAction(legal.canCheck ? 'check' : 'fold');
+    }
+  }
+  if (overdue && myRunningHand && myRunningHand.street !== 'complete' && myRunningHand.handNumber === hand.handNumber) {
+    const seat = myRunningHand.currentTurnSeat;
+    if (seat != null && myRunningHand.turnStartedAt && Date.now() - myRunningHand.turnStartedAt >= POKER_TURN_LIMIT_MS) {
+      const legal = pokerLegalActions(myRunningHand, seat);
+      if (legal) {
+        try {
+          pokerApplyAction(myRunningHand, seat, legal.canCheck ? 'check' : 'fold');
+          if (myRunningHand.street === 'showdown') pokerFinishShowdown(myRunningHand, myRunningHoleCards);
+          db.collection('pokerTables').doc(POKER_TABLE_ID).update({
+            hand: pokerHandForFirestore(myRunningHand), requestedAction: null,
+          }).catch(e => console.error('poker timeout write failed', e));
+        } catch (e) { console.error('poker timeout apply failed', e); }
+      }
+    }
+  }
+  render();
+}
+setInterval(pokerTurnTimerTick, 1000);
 
 function myPokerSeatIndex() {
   const t = state.poker.table;
@@ -1234,7 +1487,7 @@ function pokerStartHand(table, holeCardsOut) {
   return {
     handNumber: (table.handNumber || 0) + 1, deck,
     seatsInHand: occ, stacks, bets, totalContributed, folded, allIn, hasActed: {},
-    community: [], street: 'preflop', currentTurnSeat: firstToAct,
+    community: [], street: 'preflop', currentTurnSeat: firstToAct, turnStartedAt: Date.now(),
     dealerSeat, sbSeat, bbSeat, currentBet: POKER_BIG_BLIND, minRaise: POKER_BIG_BLIND,
     lastAggressorSeat: bbSeat, result: null,
   };
@@ -1290,7 +1543,7 @@ function pokerAdvanceTurn(hand) {
   const idx = order.indexOf(hand.currentTurnSeat);
   for (let step = 1; step <= order.length; step++) {
     const candidate = order[(idx + step) % order.length];
-    if (toAct.includes(candidate)) { hand.currentTurnSeat = candidate; return; }
+    if (toAct.includes(candidate)) { hand.currentTurnSeat = candidate; hand.turnStartedAt = Date.now(); return; }
   }
   pokerAdvanceStreet(hand);
 }
@@ -1313,7 +1566,7 @@ function pokerAdvanceStreet(hand) {
   const toAct = pokerActiveToActSeats(hand);
   for (let step = 1; step <= order.length; step++) {
     const candidate = order[(dealerIdx + step) % order.length];
-    if (toAct.includes(candidate)) { hand.currentTurnSeat = candidate; return; }
+    if (toAct.includes(candidate)) { hand.currentTurnSeat = candidate; hand.turnStartedAt = Date.now(); return; }
   }
   hand.currentTurnSeat = null;
 }
@@ -1463,9 +1716,14 @@ async function pokerSendAction(type, amount) {
   const table = state.poker.table;
   const mySeat = myPokerSeatIndex();
   if (!table || !table.hand || table.hand.currentTurnSeat !== mySeat) return;
-  await db.collection('pokerTables').doc(POKER_TABLE_ID).update({
-    requestedAction: { authUID: state.user.uid, seat: mySeat, type, amount: amount ?? null, handNumber: table.hand.handNumber, actionId: Math.random().toString(36).slice(2) },
-  });
+  if (type === 'fold') Sound.fold(); else Sound.chip();
+  try {
+    await db.collection('pokerTables').doc(POKER_TABLE_ID).update({
+      requestedAction: { authUID: state.user.uid, seat: mySeat, type, amount: amount ?? null, handNumber: table.hand.handNumber, actionId: Math.random().toString(36).slice(2) },
+    });
+  } catch (e) {
+    console.error('pokerSendAction failed', e);
+  }
 }
 async function pokerResetTable() {
   await db.collection('pokerTables').doc(POKER_TABLE_ID).update({ hand: null, requestedAction: null });
@@ -1475,17 +1733,70 @@ async function pokerResetTable() {
 // ----------------------------------------------------------------------------
 // Rendering
 // ----------------------------------------------------------------------------
-function pokerCardHtml(card, faceDown) {
+function pokerCardHtml(card, faceDown, animate, delayIndex) {
   if (!card) return '';
-  if (faceDown) return `<div class="playing-card back"></div>`;
+  const animAttrs = animate ? ` style="animation-delay:${((delayIndex || 0) * 0.09).toFixed(2)}s"` : '';
+  if (faceDown) return `<div class="playing-card back${animate ? ' deal-anim' : ''}"${animAttrs}></div>`;
   const isRed = card.suit === '♥' || card.suit === '♦';
-  return `<div class="playing-card${isRed ? ' red' : ''}"><div class="pc-rank">${card.rank}</div><div class="pc-suit-big">${card.suit}</div></div>`;
+  return `<div class="playing-card${isRed ? ' red' : ''}${animate ? ' deal-anim' : ''}"${animAttrs}><div class="pc-rank">${card.rank}</div><div class="pc-suit-big">${card.suit}</div></div>`;
 }
-function pokerCardHtmlSmall(card, faceDown) {
-  if (faceDown) return `<div class="playing-card back small"></div>`;
+function pokerCardHtmlSmall(card, faceDown, animate, delayIndex) {
+  const animAttrs = animate ? ` style="animation-delay:${((delayIndex || 0) * 0.09).toFixed(2)}s"` : '';
+  if (faceDown) return `<div class="playing-card back small${animate ? ' deal-anim' : ''}"${animAttrs}></div>`;
   if (!card) return '';
   const isRed = card.suit === '♥' || card.suit === '♦';
-  return `<div class="playing-card small${isRed ? ' red' : ''}"><div class="pc-rank">${card.rank}</div><div class="pc-suit-big">${card.suit}</div></div>`;
+  return `<div class="playing-card small${isRed ? ' red' : ''}${animate ? ' deal-anim' : ''}"${animAttrs}><div class="pc-rank">${card.rank}</div><div class="pc-suit-big">${card.suit}</div></div>`;
+}
+
+// A point on the oval for a seat (see pokerSeatStyle above) and the dealer
+// puck, both placed by the SAME visual rotation so the puck always sits
+// just inside whichever seat is actually dealing.
+function pokerVisualPosStyle(seatIndex, mySeat, totalSeats, rx, ry) {
+  return pokerSeatStyle(pokerVisualIndex(seatIndex, mySeat, totalSeats), totalSeats, rx, ry);
+}
+
+// Plays the right sound for whatever just changed since the last render,
+// and decides whether cards dealt THIS render should play the deal-in
+// animation — both keyed off "have we already handled this hand+street",
+// so a timer-driven re-render (every second) doesn't replay either one.
+// This has side effects (sound, state.poker.last*) — called once per
+// render, inside renderPokerScreen, same spot bjt handlers tolerate it.
+function pokerUpdateSoundsAndAnim(table, hand, mySeat) {
+  const key = hand ? `${hand.handNumber}:${hand.street}` : null;
+  let animate = false;
+
+  if (hand && key !== state.poker.lastAnimatedHandStreet) {
+    animate = true;
+    state.poker.lastAnimatedHandStreet = key;
+  }
+
+  if (hand && key !== state.poker.lastSoundHandStreet) {
+    if (state.poker.lastSoundHandStreet !== null) {
+      const flicks = { preflop: 2, flop: 3, turn: 1, river: 1 }[hand.street] || 1;
+      for (let i = 0; i < flicks; i++) Sound.cardFlick(i * 0.08);
+    }
+    state.poker.lastSoundHandStreet = key;
+  }
+
+  const isMyTurnNow = !!(hand && mySeat !== -1 && hand.currentTurnSeat === mySeat);
+  if (isMyTurnNow && !state.poker.lastSoundWasMyTurn) Sound.myTurn();
+  state.poker.lastSoundWasMyTurn = isMyTurnNow;
+  if (isMyTurnNow && hand.turnStartedAt) {
+    const secondsLeft = Math.ceil(Math.max(0, POKER_TURN_LIMIT_MS - (Date.now() - hand.turnStartedAt)) / 1000);
+    if (secondsLeft <= 5 && secondsLeft >= 1 && state.poker.lastTickSecond !== secondsLeft) {
+      Sound.tick();
+      state.poker.lastTickSecond = secondsLeft;
+    }
+  } else {
+    state.poker.lastTickSecond = null;
+  }
+
+  if (hand && hand.street === 'complete' && hand.result && state.poker.lastSoundResultHandNumber !== hand.handNumber) {
+    Sound.win();
+    state.poker.lastSoundResultHandNumber = hand.handNumber;
+  }
+
+  return animate;
 }
 
 function renderPokerScreen() {
@@ -1495,31 +1806,44 @@ function renderPokerScreen() {
   const hand = table.hand;
   const seatedCount = pokerOccupiedSeats(table).length;
   const canDeal = (!hand || hand.street === 'complete') && seatedCount >= 2;
+  const totalSeats = table.seats.length || 8;
+  const animate = pokerUpdateSoundsAndAnim(table, hand, mySeat);
+
+  const dealerSeatIdx = hand ? hand.dealerSeat : table.dealerSeat;
+  const dealerPuckHtml = (dealerSeatIdx != null && table.seats[dealerSeatIdx])
+    ? `<div class="poker-dealer-puck-pos" style="${pokerVisualPosStyle(dealerSeatIdx, mySeat, totalSeats, 33, 29)}"><span class="dealer-puck">D</span></div>`
+    : '';
+
+  const communityHtml = hand && hand.community.length
+    ? hand.community.map((c, i) => pokerCardHtml(c, false, animate, i)).join('')
+    : '';
 
   return `
     <div class="topbar">
       <h1 class="page-title">Texas Hold'em</h1>
-      <button class="btn btn-ghost btn-sm" id="poker-done">Done</button>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button class="sound-toggle" id="poker-sound-toggle" title="${Sound.enabled ? 'Mute sound' : 'Unmute sound'}">${Sound.enabled ? '🔊' : '🔇'}</button>
+        <button class="btn btn-ghost btn-sm" id="poker-done">Done</button>
+      </div>
     </div>
     <div class="content">
       <div class="chip-count" style="justify-content:center;color:var(--gold-bright);margin-bottom:14px;">
         <span class="chip-icon"></span>${state.chips ?? 0} chips
       </div>
 
-      <div class="card" style="padding:18px 14px;margin-bottom:16px;">
-        ${hand && hand.street !== 'complete' ? `
-          <div style="text-align:center;margin-bottom:12px;">
-            <div style="font-family:var(--font-display);color:var(--cream-dim);font-size:13px;letter-spacing:0.03em;margin-bottom:10px;">${escapeHtml(hand.street.charAt(0).toUpperCase() + hand.street.slice(1))}</div>
-            <div class="hand-row">${hand.community.map(c => pokerCardHtml(c, false)).join('') || '<span style="color:var(--text-tertiary);font-size:13px;">Waiting on the flop…</span>'}</div>
-            <div class="chip-count" style="justify-content:center;color:var(--gold-bright);font-size:15px;margin-top:10px;"><span class="chip-icon"></span>Pot: ${Object.values(hand.totalContributed).reduce((a,b)=>a+b,0)}</div>
-          </div>
-        ` : hand && hand.street === 'complete' && hand.result ? renderPokerResultBanner(table, hand) : `
-          <div style="text-align:center;color:var(--text-tertiary);font-size:13px;padding:10px 0;">No hand in progress</div>
-        `}
-
-        <div style="margin-top:14px;">
-          ${Array.from({length: 8}, (_, i) => renderPokerSeatRow(table, hand, i, mySeat)).join('')}
+      <div class="poker-oval-wrap">
+        <div class="poker-oval"></div>
+        ${dealerPuckHtml}
+        <div class="poker-center">
+          ${hand && hand.street !== 'complete' ? `
+            <div class="poker-pot-badge">Pot: ${Object.values(hand.totalContributed).reduce((a, b) => a + b, 0)}</div>
+            <div class="hand-row">${communityHtml || '<span style="color:var(--text-tertiary);font-size:12px;">Preflop</span>'}</div>
+          ` : (!hand || !hand.result) ? `
+            <div style="color:var(--text-tertiary);font-size:12px;">No hand in progress</div>
+          ` : ''}
         </div>
+        ${hand && hand.street === 'complete' && hand.result ? renderPokerWinBanner(table, hand) : ''}
+        ${Array.from({ length: totalSeats }, (_, i) => renderPokerSeatPos(table, hand, i, mySeat, totalSeats, animate)).join('')}
       </div>
 
       ${mySeat === -1 ? `
@@ -1540,61 +1864,71 @@ function renderPokerScreen() {
   `;
 }
 
-function renderPokerResultBanner(table, hand) {
+function renderPokerWinBanner(table, hand) {
   const winners = Object.entries(hand.result.payouts).filter(([, amt]) => amt > 0).map(([seat]) => parseInt(seat, 10));
-  const names = winners.map(s => table.seats[s] ? escapeHtml(table.seats[s].name) : '?');
-  const handName = hand.result.wonByFold ? 'everyone else folded' :
-    (winners.length && hand.result.bestHandBySeat[winners[0]] ? hand.result.bestHandBySeat[winners[0]].name : '');
+  if (winners.length === 0) return '';
+  const first = winners[0];
+  const cards = hand.result.revealedHoleCards && hand.result.revealedHoleCards[first];
+  const handName = hand.result.wonByFold ? 'Everyone else folded' :
+    (hand.result.bestHandBySeat[first] ? hand.result.bestHandBySeat[first].name : '');
+  const totalWon = winners.reduce((sum, s) => sum + (hand.result.payouts[s] || 0), 0);
+  const namesLabel = winners.map(s => table.seats[s] ? escapeHtml(table.seats[s].name) : '?').join(' & ');
   return `
-    <div style="text-align:center;margin-bottom:4px;">
-      <div style="font-family:var(--font-display);font-size:19px;font-weight:700;color:var(--gold-bright);margin-bottom:4px;">${names.join(' & ')} ${winners.length > 1 ? 'split the pot' : 'wins'}${handName ? ` — ${escapeHtml(handName)}` : ''}</div>
-      <div style="color:var(--text-secondary);font-size:13px;">${Object.entries(hand.result.payouts).map(([seat, amt]) => amt > 0 ? `${escapeHtml(table.seats[seat]?.name || '?')}: +${amt}` : '').filter(Boolean).join(' · ')}</div>
+    <div class="poker-win-banner">
+      ${cards ? `<div class="poker-win-cards">${cards.map(c => pokerCardHtml(c, false)).join('')}</div>` : ''}
+      <div class="poker-win-word">WIN</div>
+      <div class="poker-win-amount">+${totalWon} chips</div>
+      <div class="poker-win-name">${namesLabel}${winners.length > 1 ? ' split the pot' : ''}${handName ? ` — ${escapeHtml(handName)}` : ''}</div>
     </div>
   `;
 }
 
-function renderPokerSeatRow(table, hand, seatIndex, mySeat) {
+function renderPokerSeatPos(table, hand, seatIndex, mySeat, totalSeats, animate) {
   const seat = table.seats[seatIndex];
-  const inHand = hand && hand.seatsInHand && hand.seatsInHand.includes(seatIndex);
-  const isMyTurn = hand && hand.currentTurnSeat === seatIndex;
-  const isDealer = hand ? hand.dealerSeat === seatIndex : table.dealerSeat === seatIndex;
-  const folded = inHand && hand.folded[seatIndex];
-  const allIn = inHand && hand.allIn[seatIndex];
+  const visualIndex = pokerVisualIndex(seatIndex, mySeat, totalSeats);
+  const posStyle = pokerSeatStyle(visualIndex, totalSeats, 44, 40);
 
   if (!seat) {
     return `
-      <div class="seat-row">
-        <div style="width:36px;height:36px;border-radius:50%;border:1px dashed var(--border);flex-shrink:0;"></div>
-        <div style="flex:1;color:var(--text-tertiary);font-size:13px;">Empty seat</div>
-        ${mySeat === -1 ? `<button class="btn btn-secondary btn-sm" data-sit-seat="${seatIndex}">Sit Here</button>` : ''}
+      <div class="poker-seat-pos" style="${posStyle}">
+        <div class="poker-empty-seat" data-sit-seat="${seatIndex}">${mySeat === -1 ? 'Sit Here' : ''}</div>
       </div>
     `;
   }
 
+  const inHand = hand && hand.seatsInHand && hand.seatsInHand.includes(seatIndex);
+  const isMyTurn = hand && hand.currentTurnSeat === seatIndex;
+  const folded = inHand && hand.folded[seatIndex];
+  const allIn = inHand && hand.allIn[seatIndex];
+
   let holeCardsHtml = '';
   if (inHand) {
     if (seatIndex === mySeat && state.poker.myHoleCards && state.poker.myHoleCards.handNumber === hand.handNumber) {
-      holeCardsHtml = `<div style="display:flex;gap:3px;">${state.poker.myHoleCards.cards.map(c => pokerCardHtmlSmall(c, false)).join('')}</div>`;
+      holeCardsHtml = state.poker.myHoleCards.cards.map((c, i) => pokerCardHtmlSmall(c, false, animate, visualIndex * 2 + i)).join('');
     } else if (hand.result && hand.result.revealedHoleCards && hand.result.revealedHoleCards[seatIndex]) {
-      holeCardsHtml = `<div style="display:flex;gap:3px;">${hand.result.revealedHoleCards[seatIndex].map(c => pokerCardHtmlSmall(c, false)).join('')}</div>`;
+      holeCardsHtml = hand.result.revealedHoleCards[seatIndex].map(c => pokerCardHtmlSmall(c, false)).join('');
     } else if (!folded) {
-      holeCardsHtml = `<div style="display:flex;gap:3px;">${pokerCardHtmlSmall(null, true)}${pokerCardHtmlSmall(null, true)}</div>`;
+      holeCardsHtml = pokerCardHtmlSmall(null, true, animate, visualIndex * 2) + pokerCardHtmlSmall(null, true, animate, visualIndex * 2 + 1);
     }
   }
 
+  let timerHtml = '';
+  if (isMyTurn && hand.turnStartedAt) {
+    const remain = Math.max(0, POKER_TURN_LIMIT_MS - (Date.now() - hand.turnStartedAt));
+    const pct = remain / POKER_TURN_LIMIT_MS;
+    const seconds = Math.ceil(remain / 1000);
+    timerHtml = `<div class="poker-timer-ring" style="--pct:${pct.toFixed(3)}"></div><div class="poker-timer-badge">${seconds}</div>`;
+  }
+
   return `
-    <div class="seat-row${isMyTurn ? ' my-turn' : ''}${folded ? ' folded' : ''}">
-      ${avatarHtml(seat.name, seat.photoURL, 36)}
-      <div style="flex:1;min-width:0;">
-        <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px;">
-          ${escapeHtml(seat.name)}${seatIndex === mySeat ? ' (you)' : ''}
-          ${isDealer ? '<span class="dealer-puck">D</span>' : ''}
-        </div>
-        <div class="chip-count" style="color:var(--text-secondary);font-size:12px;font-weight:400;">
-          ${inHand ? (folded ? 'Folded' : allIn ? 'All-in' : `<span class="chip-icon" style="width:12px;height:12px;"></span>Bet ${hand.bets[seatIndex]}`) : 'Seated'}
-        </div>
+    <div class="poker-seat-pos${isMyTurn ? ' my-turn' : ''}${folded ? ' folded' : ''}" style="${posStyle}">
+      <div class="poker-seat-avatar-wrap">
+        ${timerHtml}
+        ${avatarHtml(seat.name, seat.photoURL, 50)}
       </div>
-      ${holeCardsHtml}
+      <div class="poker-seat-name">${escapeHtml(seat.name)}${seatIndex === mySeat ? ' (you)' : ''}</div>
+      <div class="poker-seat-chips">${inHand ? (folded ? 'Folded' : allIn ? 'All-in' : `Bet ${hand.bets[seatIndex]}`) : 'Seated'}</div>
+      ${holeCardsHtml ? `<div class="poker-seat-cards">${holeCardsHtml}</div>` : ''}
     </div>
   `;
 }
@@ -1621,6 +1955,10 @@ function renderPokerActionControls(hand, mySeat) {
 }
 
 function attachPokerHandlers() {
+  document.getElementById('poker-sound-toggle')?.addEventListener('click', () => {
+    Sound.setEnabled(!Sound.enabled);
+    render();
+  });
   document.getElementById('poker-done')?.addEventListener('click', () => {
     leavePokerScreen();
     state.screen = 'home';

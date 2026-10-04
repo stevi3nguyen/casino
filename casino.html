@@ -1121,6 +1121,7 @@ async function bjtSitDown(seatIndex) {
       const snap = await tx.get(ref);
       const table = snap.exists ? snap.data() : { seats: Array(6).fill(null), handNumber: 0, hand: null, requestedAction: null };
       if (table.seats[seatIndex]) return; // already taken
+      if (table.seats.some(s => s && s.authUID === state.user.uid)) return; // already seated elsewhere at this table
       const seats = table.seats.slice();
       seats[seatIndex] = { employeeId: state.employee.id, authUID: state.user.uid, name: state.employee.name, photoURL: state.employee.photoURL || null, bet: 50 };
       tx.set(ref, { ...table, seats }, { merge: true });
@@ -1210,9 +1211,13 @@ function renderBjSeatPos(table, hand, seatIndex, mySeat, totalSeats, animate) {
   const posStyle = bjSeatStyle(visualIndex, totalSeats);
 
   if (!seat) {
+    // Only an actual empty seat when nobody has sat down yet is clickable —
+    // once you're seated, the other open seats are just shown empty, not
+    // tappable, so you can't end up sitting in more than one at once.
+    const sittable = mySeat === -1;
     return `
       <div class="poker-seat-pos" style="${posStyle}">
-        <div class="poker-empty-seat" data-bj-sit-seat="${seatIndex}">${mySeat === -1 ? 'Sit Here' : ''}</div>
+        <div class="poker-empty-seat"${sittable ? ` data-bj-sit-seat="${seatIndex}"` : ''}>${sittable ? 'Sit Here' : ''}</div>
       </div>
     `;
   }
@@ -1456,18 +1461,25 @@ function pokerVisualIndex(seatIndex, mySeat, totalSeats) {
 }
 
 // Blackjack's table is a half-oval: a flat rail at the top for the dealer,
-// players fanned around the curved front edge below. visualIndex 0 ("you",
-// from pokerVisualIndex) sits at the bottom-center; each seat after that
-// alternates out to the right then the left (1,-1,2,-2,...) so the table
-// stays symmetric around you no matter which seat you're actually in.
-function bjVisualOffset(visualIndex) {
-  if (visualIndex === 0) return 0;
-  const n = Math.ceil(visualIndex / 2);
-  return visualIndex % 2 === 1 ? n : -n;
+// players fanned evenly around the curved front edge below, split the same
+// on both sides (e.g. 3-and-3 for a 6-seat table, never 3-and-2) so there's
+// no lopsided-looking table. With an even seat count nobody sits at the
+// exact bottom-center — "you" (visualIndex 0, from pokerVisualIndex) just
+// lands in one of the two innermost spots, with the rest fanned outward
+// alternating sides (right, left, right, left, ...).
+function bjVisualOffset(visualIndex, totalSeats) {
+  const even = totalSeats % 2 === 0;
+  if (!even) {
+    if (visualIndex === 0) return 0;
+    const n = Math.ceil(visualIndex / 2);
+    return visualIndex % 2 === 1 ? n : -n;
+  }
+  const n = Math.ceil((visualIndex + 1) / 2) - 0.5;
+  return visualIndex % 2 === 0 ? n : -n;
 }
 function bjSeatPoint(visualIndex, totalSeats) {
-  const maxOffset = Math.max(1, Math.ceil((totalSeats - 1) / 2));
-  const offset = bjVisualOffset(visualIndex);
+  const maxOffset = (totalSeats - 1) / 2 || 1;
+  const offset = bjVisualOffset(visualIndex, totalSeats);
   const maxAngleDeg = 78;
   const theta = (offset / maxOffset) * maxAngleDeg * Math.PI / 180;
   const cx = 50, cy = 22, rx = 44, ry = 56;

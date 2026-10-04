@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Shirasoni Casino</title>
+<title>Stevie's Casino</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&family=Cinzel+Decorative:wght@700;900&display=swap" rel="stylesheet">
 
 <!-- Firebase (compat/UMD builds so this works as plain <script> tags, no build step) — SAME project as the Shirasoni Schedule app, so logins and profile photos are shared. -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -48,6 +48,7 @@
     --text-tertiary: #8a7f66;
 
     --font-display: 'Playfair Display', Georgia, serif;
+    --font-title: 'Cinzel Decorative', var(--font-display);
     --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   }
   * { box-sizing: border-box; }
@@ -135,6 +136,16 @@
   .page-title {
     font-family: var(--font-display); font-size: 28px; font-weight: 700; margin: 0;
     color: var(--gold-bright); letter-spacing: 0.01em;
+  }
+  /* The app's own name, wherever it appears — an ornate display face with a
+     polished gold-foil fill instead of a flat color, so it reads as
+     branding rather than just another heading. */
+  .casino-title {
+    font-family: var(--font-title); margin: 0; font-weight: 700;
+    letter-spacing: 0.03em; line-height: 1.25;
+    background: linear-gradient(175deg, #fdedbb 0%, var(--gold-bright) 38%, var(--gold) 65%, #a87a2c 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
   }
   .content { padding: 0 20px 40px; max-width: 760px; margin: 0 auto; }
   ::placeholder { color: var(--text-tertiary); }
@@ -614,7 +625,7 @@ function renderAuthScreen() {
     <div style="width:100%;max-width:380px;">
       <div style="text-align:center;margin-bottom:28px;">
         ${SUIT_ROW}
-        <h1 style="font-family:var(--font-display);font-size:34px;font-weight:700;margin:0;color:var(--gold-bright);">Shirasoni Casino</h1>
+        <h1 class="casino-title" style="font-size:38px;">Stevie's Casino</h1>
         ${GOLD_RULE}
         <p style="color:var(--text-secondary);margin:14px 0 0;font-size:14px;">Sign in with your Shirasoni Schedule account.</p>
       </div>
@@ -655,7 +666,7 @@ function renderNoProfileScreen() {
 function renderHomeScreen() {
   return `
     <div class="topbar">
-      <h1 class="page-title">Shirasoni Casino</h1>
+      <h1 class="casino-title" style="font-size:26px;">Stevie's Casino</h1>
       <button class="btn btn-ghost btn-sm" id="home-signout">Sign Out</button>
     </div>
     <div class="content">
@@ -1117,11 +1128,19 @@ async function bjtSitDown(seatIndex) {
   try {
     if (!state.employee || !state.user) return;
     const ref = db.collection('blackjackTables').doc(BJ_TABLE_ID);
+    const pokerRef = db.collection('pokerTables').doc(POKER_TABLE_ID);
     await db.runTransaction(async (tx) => {
-      const snap = await tx.get(ref);
+      // Read both tables before any writes (Firestore transactions require
+      // all reads up front) so we can refuse to seat someone here if
+      // they're already sitting at the poker table.
+      const [snap, pokerSnap] = await Promise.all([tx.get(ref), tx.get(pokerRef)]);
       const table = snap.exists ? snap.data() : { seats: Array(6).fill(null), handNumber: 0, hand: null, requestedAction: null };
+      const pokerTable = pokerSnap.exists ? pokerSnap.data() : null;
       if (table.seats[seatIndex]) return; // already taken
       if (table.seats.some(s => s && s.authUID === state.user.uid)) return; // already seated elsewhere at this table
+      if (pokerTable && pokerTable.seats.some(s => s && s.authUID === state.user.uid)) {
+        throw new Error("You're already seated at the Poker table — stand up there first.");
+      }
       const seats = table.seats.slice();
       seats[seatIndex] = { employeeId: state.employee.id, authUID: state.user.uid, name: state.employee.name, photoURL: state.employee.photoURL || null, bet: 50 };
       tx.set(ref, { ...table, seats }, { merge: true });
@@ -1907,10 +1926,19 @@ async function pokerSitDown(seatIndex) {
   try {
     if (!state.employee || !state.user) return;
     const ref = db.collection('pokerTables').doc(POKER_TABLE_ID);
+    const bjRef = db.collection('blackjackTables').doc(BJ_TABLE_ID);
     await db.runTransaction(async (tx) => {
-      const snap = await tx.get(ref);
+      // Read both tables before any writes (Firestore transactions require
+      // all reads up front) so we can refuse to seat someone here if
+      // they're already sitting at the blackjack table.
+      const [snap, bjSnap] = await Promise.all([tx.get(ref), tx.get(bjRef)]);
       const table = snap.exists ? snap.data() : { seats: Array(8).fill(null), dealerSeat: null, handNumber: 0, hand: null, requestedAction: null };
+      const bjTable = bjSnap.exists ? bjSnap.data() : null;
       if (table.seats[seatIndex]) return; // already taken
+      if (table.seats.some(s => s && s.authUID === state.user.uid)) return; // already seated elsewhere at this table
+      if (bjTable && bjTable.seats.some(s => s && s.authUID === state.user.uid)) {
+        throw new Error("You're already seated at the Blackjack table — stand up there first.");
+      }
       const seats = table.seats.slice();
       seats[seatIndex] = { employeeId: state.employee.id, authUID: state.user.uid, name: state.employee.name, photoURL: state.employee.photoURL || null };
       tx.set(ref, { ...table, seats }, { merge: true });

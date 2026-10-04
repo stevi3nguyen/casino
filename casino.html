@@ -6,7 +6,7 @@
 <title>Shirasoni Casino</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
 
 <!-- Firebase (compat/UMD builds so this works as plain <script> tags, no build step) — SAME project as the Shirasoni Schedule app, so logins and profile photos are shared. -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -15,24 +15,47 @@
 
 <style>
   :root {
-    --bg: #0a0a0a;
-    --bg-elevated: #161616;
-    --bg-elevated-2: #1f1f1f;
-    --border: #2a2a2a;
-    --text: #f2f2f2;
-    --text-secondary: #9a9a9a;
-    --text-tertiary: #6b6b6b;
-    --accent: #15803d;
-    --accent-dim: rgba(21, 128, 61, 0.18);
-    --green: #22c55e;
-    --red: #ef4444;
-    --gold: #eab308;
+    /* Room — the dark space the table sits in */
+    --room: #0b0a08;
+    --room-vignette: radial-gradient(ellipse at 50% -10%, #1a1712 0%, #0b0a08 60%);
+
+    /* Felt table */
+    --felt-dark: #06291c;
+    --felt: #0e4d34;
+    --felt-light: #15603f;
+    --rail: #241307;
+    --rail-light: #3a2112;
+
+    /* Gold — the one accent that carries emphasis everywhere */
+    --gold: #cea03f;
+    --gold-bright: #f0ce7e;
+    --gold-dim: rgba(206, 160, 63, 0.16);
+
+    /* Ink & paper */
+    --cream: #efe4c6;
+    --cream-dim: #b9ad8c;
+    --card-face: #fdfaf2;
+    --ink: #1c1712;
+
+    /* Semantic — reused consistently for action meaning, not decoration */
+    --felt-action: #1f8a56;
+    --red-suit: #a3262b;
+    --red-bright: #d84b45;
+
+    --border: rgba(206, 160, 63, 0.22);
+    --text: var(--cream);
+    --text-secondary: var(--cream-dim);
+    --text-tertiary: #8a7f66;
+
+    --font-display: 'Playfair Display', Georgia, serif;
     --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   }
   * { box-sizing: border-box; }
   html, body {
     margin: 0; padding: 0;
-    background: var(--bg);
+    background: var(--room);
+    background-image: var(--room-vignette);
+    background-attachment: fixed;
     color: var(--text);
     font-family: var(--font);
     -webkit-font-smoothing: antialiased;
@@ -41,56 +64,125 @@
   input, select { font-family: var(--font); }
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+  ::-webkit-scrollbar-thumb { background: var(--rail-light); border-radius: 6px; }
 
   #root { min-height: 100vh; }
 
   .avatar {
     border-radius: 50%; flex-shrink: 0; display: inline-flex; align-items: center;
-    justify-content: center; font-weight: 700; color: white; overflow: hidden;
+    justify-content: center; font-weight: 700; color: var(--ink); overflow: hidden;
     background-size: cover; background-position: center;
+    box-shadow: 0 0 0 2px var(--rail), 0 0 0 3px var(--gold-dim);
   }
 
   .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-    padding: 10px 16px; border-radius: 10px; border: none;
-    font-size: 14px; font-weight: 600; transition: opacity .15s;
+    padding: 11px 18px; border-radius: 999px; border: 1px solid transparent;
+    font-size: 14px; font-weight: 700; letter-spacing: 0.01em;
+    transition: transform .12s ease, filter .12s ease, opacity .12s ease;
   }
-  .btn:hover { opacity: 0.88; }
-  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  .btn-primary { background: var(--accent); color: white; }
-  .btn-secondary { background: var(--bg-elevated-2); color: var(--text); border: 1px solid var(--border); }
-  .btn-danger { background: rgba(239,68,68,0.15); color: var(--red); }
-  .btn-ghost { background: transparent; color: var(--text-secondary); }
-  .btn-sm { padding: 6px 12px; font-size: 13px; }
+  .btn:hover { filter: brightness(1.08); }
+  .btn:active { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; filter: none; transform: none; }
+
+  /* Bet / Raise / primary commitments — gold, the "this moves chips forward" color */
+  .btn-primary {
+    background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+    color: var(--ink);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.4) inset, 0 3px 10px rgba(0,0,0,0.35);
+  }
+  /* Check / Call — felt green, "this holds your position" */
+  .btn-secondary {
+    background: linear-gradient(180deg, var(--felt-light), var(--felt));
+    color: var(--cream);
+    border-color: rgba(239, 228, 198, 0.18);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  /* Fold / destructive — muted red outline, "this gives up the hand" */
+  .btn-danger {
+    background: transparent; color: var(--red-bright);
+    border-color: rgba(216, 75, 69, 0.5);
+  }
+  .btn-ghost { background: transparent; color: var(--text-secondary); border-color: transparent; }
+  .btn-ghost:hover { color: var(--cream); }
+  .btn-sm { padding: 7px 14px; font-size: 13px; }
   .btn-block { width: 100%; }
 
   .input {
     width: 100%; padding: 11px 13px; border-radius: 10px;
-    background: var(--bg-elevated-2); border: 1px solid var(--border);
+    background: rgba(0,0,0,0.25); border: 1px solid var(--border);
     color: var(--text); font-size: 14px; outline: none;
+    font-variant-numeric: tabular-nums;
   }
-  .input:focus { border-color: var(--accent); }
+  .input:focus { border-color: var(--gold); }
   .label { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; display: block; }
 
-  .card { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 14px; }
+  /* The table itself — wood rail framing felt, used for every screen's main surface */
+  .card {
+    background: var(--felt);
+    background-image:
+      radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.05), transparent 60%),
+      radial-gradient(ellipse at 50% 100%, rgba(0,0,0,0.25), transparent 70%);
+    border: 1px solid var(--rail-light);
+    border-radius: 18px;
+    box-shadow: 0 0 0 6px var(--rail), 0 10px 30px rgba(0,0,0,0.5);
+  }
 
   .topbar {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 18px 20px 10px; gap: 12px; flex-wrap: wrap;
+    padding: 20px 20px 6px; gap: 12px; flex-wrap: wrap;
   }
-  .page-title { font-size: 26px; font-weight: 800; margin: 0; }
+  .page-title {
+    font-family: var(--font-display); font-size: 28px; font-weight: 700; margin: 0;
+    color: var(--gold-bright); letter-spacing: 0.01em;
+  }
   .content { padding: 0 20px 40px; max-width: 760px; margin: 0 auto; }
   ::placeholder { color: var(--text-tertiary); }
 
-  .playing-card {
-    width: 50px; height: 70px; border-radius: 8px; background: #fff; color: #111;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    font-weight: 700; border: 1px solid var(--border); flex-shrink: 0;
+  .chip-count {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-variant-numeric: tabular-nums; font-weight: 700;
   }
-  .playing-card.red { color: #c0392b; }
-  .playing-card.back { background: var(--accent); color: var(--accent); }
+  /* A poker chip built entirely from CSS — no image assets, stays crisp at any size */
+  .chip-icon {
+    width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+    background:
+      repeating-conic-gradient(var(--gold-bright) 0deg 20deg, var(--red-suit) 20deg 40deg);
+    box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 4px var(--card-face), 0 2px 4px rgba(0,0,0,0.4);
+  }
+
+  .playing-card {
+    width: 52px; height: 74px; border-radius: 8px; background: var(--card-face); color: var(--ink);
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 5px 6px; font-weight: 700; flex-shrink: 0;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,0,0,0.06);
+    font-family: var(--font);
+  }
+  .playing-card .pc-rank { font-size: 15px; line-height: 1; }
+  .playing-card .pc-suit-big { font-size: 24px; line-height: 1; align-self: center; }
+  .playing-card.red { color: var(--red-suit); }
+  .playing-card.back {
+    background:
+      repeating-linear-gradient(45deg, var(--gold) 0 4px, var(--felt) 4px 8px),
+      repeating-linear-gradient(-45deg, var(--gold) 0 4px, var(--felt) 4px 8px);
+    background-blend-mode: multiply;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.4), inset 0 0 0 2px var(--cream);
+  }
+  .playing-card.small { width: 30px; height: 42px; padding: 3px 4px; border-radius: 5px; }
+  .playing-card.small .pc-rank { font-size: 10px; }
+  .playing-card.small .pc-suit-big { font-size: 14px; }
   .hand-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+
+  .dealer-puck {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px; border-radius: 50%; background: var(--cream);
+    color: var(--ink); font-size: 10px; font-weight: 800; font-family: var(--font-display);
+    box-shadow: 0 0 0 1px var(--gold), 0 1px 3px rgba(0,0,0,0.4);
+  }
+  .seat-row { display: flex; align-items: center; gap: 10px; padding: 10px 6px; border-radius: 10px; }
+  .seat-row + .seat-row { border-top: 1px solid rgba(239,228,198,0.08); }
+  .seat-row.my-turn { background: var(--gold-dim); box-shadow: inset 0 0 0 1px rgba(206,160,63,0.4); }
+  .seat-row.folded { opacity: 0.4; }
 </style>
 </head>
 <body>
@@ -256,21 +348,29 @@ function render() {
   attachHomeHandlers();
 }
 
+// A thin gold rule used under marquee titles — real structure (separates
+// wordmark from content) rather than pure decoration.
+const GOLD_RULE = `<div style="width:56px;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:14px auto 0;"></div>`;
+// The four suit pips, used sparingly as a motif on the auth/lobby screens —
+// the one place this app gets to be a little theatrical.
+const SUIT_ROW = `<div style="font-size:20px;letter-spacing:10px;color:var(--gold-dim);margin-bottom:10px;"><span style="color:var(--red-bright);">♥</span><span style="color:var(--gold);">♠</span><span style="color:var(--red-bright);">♦</span><span style="color:var(--gold);">♣</span></div>`;
+
 function renderAuthScreen() {
   return `
   <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;">
     <div style="width:100%;max-width:380px;">
       <div style="text-align:center;margin-bottom:28px;">
-        <div style="font-size:40px;margin-bottom:10px;">♠️</div>
-        <h1 style="font-size:26px;font-weight:800;margin:0 0 4px;">Shirasoni Casino</h1>
-        <p style="color:var(--text-secondary);margin:0;font-size:14px;">Sign in with your Shirasoni Schedule account.</p>
+        ${SUIT_ROW}
+        <h1 style="font-family:var(--font-display);font-size:34px;font-weight:700;margin:0;color:var(--gold-bright);">Shirasoni Casino</h1>
+        ${GOLD_RULE}
+        <p style="color:var(--text-secondary);margin:14px 0 0;font-size:14px;">Sign in with your Shirasoni Schedule account.</p>
       </div>
-      <div class="card" style="padding:20px;">
+      <div class="card" style="padding:22px;">
         <label class="label">Email</label>
         <input class="input" id="auth-email" type="email" placeholder="you@example.com" style="margin-bottom:14px;" autocomplete="username">
         <label class="label">Password</label>
         <input class="input" id="auth-password" type="password" placeholder="••••••••" style="margin-bottom:18px;" autocomplete="current-password">
-        ${state.authError ? `<p style="color:var(--red);font-size:13px;margin:0 0 14px;">${escapeHtml(state.authError)}</p>` : ''}
+        ${state.authError ? `<p style="color:var(--red-bright);font-size:13px;margin:0 0 14px;">${escapeHtml(state.authError)}</p>` : ''}
         <button class="btn btn-primary btn-block" id="btn-signin">Sign In</button>
       </div>
       <p style="text-align:center;color:var(--text-tertiary);font-size:12px;margin-top:16px;">Don't have an account yet? Sign up in the Shirasoni Schedule app first.</p>
@@ -287,9 +387,9 @@ function attachAuthHandlers() {
 function renderNoProfileScreen() {
   return `
     <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;">
-      <div style="max-width:380px;text-align:center;">
-        <div style="font-size:40px;margin-bottom:12px;">⚠️</div>
-        <h2 style="margin:0 0 10px;">No Staff Profile Found</h2>
+      <div class="card" style="max-width:380px;text-align:center;padding:28px;">
+        <div style="font-size:32px;margin-bottom:10px;">♣</div>
+        <h2 style="font-family:var(--font-display);margin:0 0 10px;color:var(--gold-bright);">No Staff Profile Found</h2>
         <p style="color:var(--text-secondary);font-size:14px;line-height:1.5;margin:0 0 20px;">
           Your login worked, but there's no staff profile linked to this account — sign in with the same account you use for the Shirasoni Schedule app.
         </p>
@@ -303,30 +403,32 @@ function renderHomeScreen() {
   return `
     <div class="topbar">
       <h1 class="page-title">Shirasoni Casino</h1>
-      <button class="btn btn-secondary btn-sm" id="home-signout">Sign Out</button>
+      <button class="btn btn-ghost btn-sm" id="home-signout">Sign Out</button>
     </div>
     <div class="content">
-      <div class="card" style="padding:20px;text-align:center;margin-bottom:20px;">
-        ${avatarHtml(state.employee.name, state.employee.photoURL, 64)}
-        <div style="font-weight:700;margin-top:10px;">${escapeHtml(state.employee.name)}</div>
-        <div style="color:var(--gold);font-weight:700;margin-top:6px;">${state.chips ?? '…'} chips</div>
-        ${state.chips === 0 ? `<button class="btn btn-ghost btn-sm" id="home-get-chips" style="margin-top:6px;">Get More Chips</button>` : ''}
+      <div class="card" style="padding:24px 20px;text-align:center;margin-bottom:18px;">
+        ${avatarHtml(state.employee.name, state.employee.photoURL, 68)}
+        <div style="font-weight:700;margin-top:12px;">${escapeHtml(state.employee.name)}</div>
+        <div class="chip-count" style="justify-content:center;color:var(--gold-bright);font-size:18px;margin-top:8px;">
+          <span class="chip-icon"></span>${state.chips ?? '…'} chips
+        </div>
+        ${state.chips === 0 ? `<button class="btn btn-ghost btn-sm" id="home-get-chips" style="margin-top:8px;">Get More Chips</button>` : ''}
       </div>
-      <div class="card" style="padding:16px;display:flex;align-items:center;gap:14px;cursor:pointer;margin-bottom:12px;" id="home-play-blackjack">
-        <div style="font-size:28px;">♠️</div>
+      <div class="card" style="padding:18px;display:flex;align-items:center;gap:14px;cursor:pointer;margin-bottom:12px;" id="home-play-blackjack">
+        <div style="font-size:30px;">♠</div>
         <div style="flex:1;">
-          <div style="font-weight:700;">Blackjack</div>
+          <div style="font-family:var(--font-display);font-weight:700;font-size:17px;color:var(--gold-bright);">Blackjack</div>
           <div style="color:var(--text-secondary);font-size:13px;">You vs. the dealer. Hit, stand, or double down.</div>
         </div>
-        <div style="color:var(--text-tertiary);">›</div>
+        <div style="color:var(--gold);font-size:20px;">›</div>
       </div>
-      <div class="card" style="padding:16px;display:flex;align-items:center;gap:14px;cursor:pointer;" id="home-play-poker">
-        <div style="font-size:28px;">👥</div>
+      <div class="card" style="padding:18px;display:flex;align-items:center;gap:14px;cursor:pointer;" id="home-play-poker">
+        <div style="font-size:30px;">♦</div>
         <div style="flex:1;">
-          <div style="font-weight:700;">Texas Hold'em</div>
+          <div style="font-family:var(--font-display);font-weight:700;font-size:17px;color:var(--gold-bright);">Texas Hold'em</div>
           <div style="color:var(--text-secondary);font-size:13px;">One shared table. Sit down and play against coworkers.</div>
         </div>
-        <div style="color:var(--text-tertiary);">›</div>
+        <div style="color:var(--gold);font-size:20px;">›</div>
       </div>
     </div>
   `;
@@ -439,7 +541,7 @@ function bjDoubleDown(bj) {
 function cardHtml(card, faceDown) {
   if (faceDown) return `<div class="playing-card back"></div>`;
   const isRed = card.suit === '♥' || card.suit === '♦';
-  return `<div class="playing-card${isRed ? ' red' : ''}"><div>${card.rank}</div><div>${card.suit}</div></div>`;
+  return `<div class="playing-card${isRed ? ' red' : ''}"><div class="pc-rank">${card.rank}</div><div class="pc-suit-big">${card.suit}</div></div>`;
 }
 
 function renderBlackjackScreen() {
@@ -450,30 +552,35 @@ function renderBlackjackScreen() {
   return `
     <div class="topbar">
       <h1 class="page-title">Blackjack</h1>
-      <button class="btn btn-secondary btn-sm" id="bj-done">Done</button>
+      <button class="btn btn-ghost btn-sm" id="bj-done">Done</button>
     </div>
     <div class="content">
-      <div style="text-align:center;color:var(--gold);font-weight:700;margin-bottom:16px;">${state.chips ?? 0} chips</div>
-
-      <div style="text-align:center;margin-bottom:20px;">
-        <div style="color:var(--text-secondary);font-size:13px;font-weight:600;margin-bottom:8px;">Dealer</div>
-        <div class="hand-row">
-          ${bj.dealerCards.map((c, i) => cardHtml(c, i === 1 && !dealerDone)).join('')}
-        </div>
-        ${bj.phase !== 'betting' ? `<div style="margin-top:6px;color:var(--text-secondary);font-size:13px;">${dealerDone ? dv.total : '?'}</div>` : ''}
+      <div class="chip-count" style="justify-content:center;color:var(--gold-bright);margin-bottom:16px;">
+        <span class="chip-icon"></span>${state.chips ?? 0} chips
       </div>
 
-      <div style="text-align:center;margin-bottom:24px;">
-        <div class="hand-row">
-          ${bj.playerCards.map(c => cardHtml(c, false)).join('')}
+      <div class="card" style="padding:22px 16px;">
+        <div style="text-align:center;margin-bottom:22px;">
+          <div style="font-family:var(--font-display);color:var(--cream-dim);font-size:13px;letter-spacing:0.02em;margin-bottom:10px;">Dealer</div>
+          <div class="hand-row">
+            ${bj.dealerCards.map((c, i) => cardHtml(c, i === 1 && !dealerDone)).join('')}
+          </div>
+          ${bj.phase !== 'betting' ? `<div style="margin-top:8px;color:var(--gold-bright);font-weight:700;font-variant-numeric:tabular-nums;">${dealerDone ? dv.total : '?'}</div>` : ''}
         </div>
-        ${bj.phase !== 'betting' ? `<div style="margin-top:6px;color:var(--text-secondary);font-size:13px;">${pv.total}${pv.isSoft ? ' (soft)' : ''}</div>` : ''}
-        <div style="color:var(--text-secondary);font-size:13px;font-weight:600;margin-top:8px;">You</div>
+
+        <div style="text-align:center;">
+          <div class="hand-row">
+            ${bj.playerCards.map(c => cardHtml(c, false)).join('')}
+          </div>
+          ${bj.phase !== 'betting' ? `<div style="margin-top:8px;color:var(--gold-bright);font-weight:700;font-variant-numeric:tabular-nums;">${pv.total}${pv.isSoft ? ' (soft)' : ''}</div>` : ''}
+          <div style="font-family:var(--font-display);color:var(--cream-dim);font-size:13px;letter-spacing:0.02em;margin-top:10px;">You</div>
+        </div>
       </div>
 
+      <div style="margin-top:18px;">
       ${bj.phase === 'betting' ? `
-        <div class="card" style="padding:18px;text-align:center;">
-          <div style="font-weight:700;margin-bottom:12px;">Bet: ${bj.bet} chips</div>
+        <div style="text-align:center;">
+          <div class="chip-count" style="justify-content:center;font-size:17px;margin-bottom:14px;"><span class="chip-icon"></span>Bet: ${bj.bet} chips</div>
           <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:14px;">
             ${[25,100,250,500].map(a => `<button class="btn btn-secondary btn-sm" data-bet-add="${a}" ${a > (state.chips ?? 0) ? 'disabled' : ''}>+${a}</button>`).join('')}
             <button class="btn btn-secondary btn-sm" id="bj-bet-max">Max</button>
@@ -485,15 +592,16 @@ function renderBlackjackScreen() {
         <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
           <button class="btn btn-secondary" id="bj-hit">Hit</button>
           <button class="btn btn-secondary" id="bj-stand">Stand</button>
-          <button class="btn btn-secondary" id="bj-double" ${bj.playerCards.length !== 2 || bj.bet > (state.chips ?? 0) ? 'disabled' : ''}>Double Down</button>
+          <button class="btn btn-primary" id="bj-double" ${bj.playerCards.length !== 2 || bj.bet > (state.chips ?? 0) ? 'disabled' : ''}>Double Down</button>
         </div>
       ` : `
-        <div class="card" style="padding:18px;text-align:center;">
-          <div style="font-weight:700;margin-bottom:6px;">${bj.outcome.message}</div>
-          <div style="color:${bj.outcome.delta >= 0 ? 'var(--green)' : 'var(--red)'};margin-bottom:14px;">${bj.outcome.delta >= 0 ? '+' : ''}${bj.outcome.delta} chips</div>
+        <div style="text-align:center;">
+          <div style="font-family:var(--font-display);font-size:19px;font-weight:700;color:var(--gold-bright);margin-bottom:6px;">${bj.outcome.message}</div>
+          <div class="chip-count" style="justify-content:center;color:${bj.outcome.delta >= 0 ? 'var(--gold-bright)' : 'var(--red-bright)'};margin-bottom:16px;">${bj.outcome.delta >= 0 ? '+' : ''}${bj.outcome.delta} chips</div>
           <button class="btn btn-primary btn-block" id="bj-new-round">New Round</button>
         </div>
       `}
+      </div>
     </div>
   `;
 }
@@ -962,7 +1070,13 @@ function pokerCardHtml(card, faceDown) {
   if (!card) return '';
   if (faceDown) return `<div class="playing-card back"></div>`;
   const isRed = card.suit === '♥' || card.suit === '♦';
-  return `<div class="playing-card${isRed ? ' red' : ''}"><div>${card.rank}</div><div>${card.suit}</div></div>`;
+  return `<div class="playing-card${isRed ? ' red' : ''}"><div class="pc-rank">${card.rank}</div><div class="pc-suit-big">${card.suit}</div></div>`;
+}
+function pokerCardHtmlSmall(card, faceDown) {
+  if (faceDown) return `<div class="playing-card back small"></div>`;
+  if (!card) return '';
+  const isRed = card.suit === '♥' || card.suit === '♦';
+  return `<div class="playing-card small${isRed ? ' red' : ''}"><div class="pc-rank">${card.rank}</div><div class="pc-suit-big">${card.suit}</div></div>`;
 }
 
 function renderPokerScreen() {
@@ -976,21 +1090,27 @@ function renderPokerScreen() {
   return `
     <div class="topbar">
       <h1 class="page-title">Texas Hold'em</h1>
-      <button class="btn btn-secondary btn-sm" id="poker-done">Done</button>
+      <button class="btn btn-ghost btn-sm" id="poker-done">Done</button>
     </div>
     <div class="content">
-      <div style="text-align:center;color:var(--gold);font-weight:700;margin-bottom:12px;">${state.chips ?? 0} chips</div>
+      <div class="chip-count" style="justify-content:center;color:var(--gold-bright);margin-bottom:14px;">
+        <span class="chip-icon"></span>${state.chips ?? 0} chips
+      </div>
 
-      ${hand && hand.street !== 'complete' ? `
-        <div style="text-align:center;margin-bottom:10px;color:var(--text-secondary);font-size:13px;text-transform:uppercase;letter-spacing:.04em;">${hand.street}</div>
-        <div class="hand-row" style="margin-bottom:8px;">${hand.community.map(c => pokerCardHtml(c, false)).join('') || '<span style="color:var(--text-tertiary);font-size:13px;">No community cards yet</span>'}</div>
-        <div style="text-align:center;color:var(--text-secondary);font-size:13px;margin-bottom:16px;">Pot: ${Object.values(hand.totalContributed).reduce((a,b)=>a+b,0)} chips</div>
-      ` : ''}
+      <div class="card" style="padding:18px 14px;margin-bottom:16px;">
+        ${hand && hand.street !== 'complete' ? `
+          <div style="text-align:center;margin-bottom:12px;">
+            <div style="font-family:var(--font-display);color:var(--cream-dim);font-size:13px;letter-spacing:0.03em;margin-bottom:10px;">${escapeHtml(hand.street.charAt(0).toUpperCase() + hand.street.slice(1))}</div>
+            <div class="hand-row">${hand.community.map(c => pokerCardHtml(c, false)).join('') || '<span style="color:var(--text-tertiary);font-size:13px;">Waiting on the flop…</span>'}</div>
+            <div class="chip-count" style="justify-content:center;color:var(--gold-bright);font-size:15px;margin-top:10px;"><span class="chip-icon"></span>Pot: ${Object.values(hand.totalContributed).reduce((a,b)=>a+b,0)}</div>
+          </div>
+        ` : hand && hand.street === 'complete' && hand.result ? renderPokerResultBanner(table, hand) : `
+          <div style="text-align:center;color:var(--text-tertiary);font-size:13px;padding:10px 0;">No hand in progress</div>
+        `}
 
-      ${hand && hand.street === 'complete' && hand.result ? renderPokerResultBanner(table, hand) : ''}
-
-      <div class="card" style="padding:14px;margin-bottom:16px;">
-        ${Array.from({length: 8}, (_, i) => renderPokerSeatRow(table, hand, i, mySeat)).join('')}
+        <div style="margin-top:14px;">
+          ${Array.from({length: 8}, (_, i) => renderPokerSeatRow(table, hand, i, mySeat)).join('')}
+        </div>
       </div>
 
       ${mySeat === -1 ? `
@@ -1017,8 +1137,8 @@ function renderPokerResultBanner(table, hand) {
   const handName = hand.result.wonByFold ? 'everyone else folded' :
     (winners.length && hand.result.bestHandBySeat[winners[0]] ? hand.result.bestHandBySeat[winners[0]].name : '');
   return `
-    <div class="card" style="padding:16px;text-align:center;margin-bottom:16px;border-color:var(--gold);">
-      <div style="font-weight:700;margin-bottom:4px;">${names.join(' & ')} ${winners.length > 1 ? 'split the pot' : 'wins'}${handName ? ` — ${escapeHtml(handName)}` : ''}</div>
+    <div style="text-align:center;margin-bottom:4px;">
+      <div style="font-family:var(--font-display);font-size:19px;font-weight:700;color:var(--gold-bright);margin-bottom:4px;">${names.join(' & ')} ${winners.length > 1 ? 'split the pot' : 'wins'}${handName ? ` — ${escapeHtml(handName)}` : ''}</div>
       <div style="color:var(--text-secondary);font-size:13px;">${Object.entries(hand.result.payouts).map(([seat, amt]) => amt > 0 ? `${escapeHtml(table.seats[seat]?.name || '?')}: +${amt}` : '').filter(Boolean).join(' · ')}</div>
     </div>
   `;
@@ -1034,8 +1154,8 @@ function renderPokerSeatRow(table, hand, seatIndex, mySeat) {
 
   if (!seat) {
     return `
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 4px;${seatIndex < 7 ? 'border-bottom:1px solid var(--border);' : ''}">
-        <div style="width:36px;height:36px;border-radius:50%;border:1px dashed var(--border);"></div>
+      <div class="seat-row">
+        <div style="width:36px;height:36px;border-radius:50%;border:1px dashed var(--border);flex-shrink:0;"></div>
         <div style="flex:1;color:var(--text-tertiary);font-size:13px;">Empty seat</div>
         ${mySeat === -1 ? `<button class="btn btn-secondary btn-sm" data-sit-seat="${seatIndex}">Sit Here</button>` : ''}
       </div>
@@ -1045,24 +1165,24 @@ function renderPokerSeatRow(table, hand, seatIndex, mySeat) {
   let holeCardsHtml = '';
   if (inHand) {
     if (seatIndex === mySeat && state.poker.myHoleCards && state.poker.myHoleCards.handNumber === hand.handNumber) {
-      holeCardsHtml = `<div style="display:flex;gap:3px;">${state.poker.myHoleCards.cards.map(c => pokerCardHtml(c, false)).join('')}</div>`;
+      holeCardsHtml = `<div style="display:flex;gap:3px;">${state.poker.myHoleCards.cards.map(c => pokerCardHtmlSmall(c, false)).join('')}</div>`;
     } else if (hand.result && hand.result.revealedHoleCards && hand.result.revealedHoleCards[seatIndex]) {
-      holeCardsHtml = `<div style="display:flex;gap:3px;">${hand.result.revealedHoleCards[seatIndex].map(c => pokerCardHtml(c, false)).join('')}</div>`;
+      holeCardsHtml = `<div style="display:flex;gap:3px;">${hand.result.revealedHoleCards[seatIndex].map(c => pokerCardHtmlSmall(c, false)).join('')}</div>`;
     } else if (!folded) {
-      holeCardsHtml = `<div style="display:flex;gap:3px;"><div class="playing-card back" style="width:28px;height:40px;"></div><div class="playing-card back" style="width:28px;height:40px;"></div></div>`;
+      holeCardsHtml = `<div style="display:flex;gap:3px;">${pokerCardHtmlSmall(null, true)}${pokerCardHtmlSmall(null, true)}</div>`;
     }
   }
 
   return `
-    <div style="display:flex;align-items:center;gap:10px;padding:8px 4px;${seatIndex < 7 ? 'border-bottom:1px solid var(--border);' : ''}${isMyTurn ? 'background:rgba(234,179,8,0.08);border-radius:8px;' : ''}${folded ? 'opacity:0.45;' : ''}">
+    <div class="seat-row${isMyTurn ? ' my-turn' : ''}${folded ? ' folded' : ''}">
       ${avatarHtml(seat.name, seat.photoURL, 36)}
       <div style="flex:1;min-width:0;">
         <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px;">
           ${escapeHtml(seat.name)}${seatIndex === mySeat ? ' (you)' : ''}
-          ${isDealer ? '<span style="font-size:10px;background:var(--bg-elevated-2);border:1px solid var(--border);border-radius:4px;padding:1px 4px;">D</span>' : ''}
+          ${isDealer ? '<span class="dealer-puck">D</span>' : ''}
         </div>
-        <div style="color:var(--text-secondary);font-size:12px;">
-          ${inHand ? `${folded ? 'Folded' : allIn ? 'All-in' : `Bet ${hand.bets[seatIndex]}`}` : 'Seated'}
+        <div class="chip-count" style="color:var(--text-secondary);font-size:12px;font-weight:400;">
+          ${inHand ? (folded ? 'Folded' : allIn ? 'All-in' : `<span class="chip-icon" style="width:12px;height:12px;"></span>Bet ${hand.bets[seatIndex]}`) : 'Seated'}
         </div>
       </div>
       ${holeCardsHtml}
@@ -1077,9 +1197,9 @@ function renderPokerActionControls(hand, mySeat) {
   return `
     <div class="card" style="padding:14px;margin-top:4px;">
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:${legal.canBetOrRaise ? '10px' : '0'};">
-        <button class="btn btn-secondary" id="poker-fold">Fold</button>
+        <button class="btn btn-danger" id="poker-fold">Fold</button>
         ${legal.canCheck ? `<button class="btn btn-secondary" id="poker-check">Check</button>` : `<button class="btn btn-secondary" id="poker-call">Call ${legal.callAmount}</button>`}
-        ${legal.canBetOrRaise ? `<button class="btn btn-secondary" id="poker-allin">All-In (${legal.maxRaiseTo})</button>` : ''}
+        ${legal.canBetOrRaise ? `<button class="btn btn-primary" id="poker-allin">All-In (${legal.maxRaiseTo})</button>` : ''}
       </div>
       ${legal.canBetOrRaise ? `
         <div style="display:flex;gap:8px;align-items:center;">

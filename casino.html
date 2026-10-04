@@ -220,6 +220,7 @@ const state = {
   bj: {
     table: null,                 // live blackjackTables/main doc
     lastAppliedHandNumber: null, // guards against applying the same hand's payout twice
+    lastError: null,             // surfaced in the UI instead of failing silently
   },
   poker: {
     table: null,              // live pokerTables/main doc
@@ -319,6 +320,26 @@ async function resetChips() {
 // ============================================================================
 function render() {
   const root = document.getElementById('root');
+  try {
+    renderInner(root);
+  } catch (e) {
+    // If anything above throws mid-render, the DOM (and its event
+    // listeners) are left exactly as they were from the last *successful*
+    // render — which looks like the screen "freezing": every button still
+    // on screen is wired to stale, out-of-date state. Showing this instead
+    // makes that failure visible and recoverable without a hard reload.
+    console.error('render() failed', e);
+    root.innerHTML = `
+      <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;color:var(--text-tertiary, #999);">
+        <div style="font-weight:600;color:var(--cream, #eee);">Something went wrong showing this screen.</div>
+        <div style="font-size:12px;opacity:0.8;max-width:320px;word-break:break-word;">${escapeHtml(e.message || String(e))}</div>
+        <button class="btn btn-primary" id="render-error-reload">Reload</button>
+      </div>
+    `;
+    document.getElementById('render-error-reload')?.addEventListener('click', () => location.reload());
+  }
+}
+function renderInner(root) {
   if (!state.authReady) {
     root.innerHTML = `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;color:var(--text-tertiary)">Loading…</div>`;
     return;
@@ -500,16 +521,37 @@ let myBjRunningHand = null;
 let lastProcessedBjActionId = null;
 
 function enterBlackjackScreen() {
+  state.bj.lastError = null;
   unsubBjTable = db.collection('blackjackTables').doc(BJ_TABLE_ID).onSnapshot(snap => {
     state.bj.table = snap.exists ? snap.data() : { seats: Array(6).fill(null), handNumber: 0, hand: null, requestedAction: null };
-    maybeRunBjHandLogic();
-    maybeApplyMyBjPayout();
+    // These two run whatever logic this client owes the table (running a
+    // hand, applying a payout) *before* rendering. If either throws, the
+    // screen must still re-render — otherwise the DOM (and its event
+    // listeners) are left stuck on stale state, which looks exactly like a
+    // frozen screen that needs a reload to recover from.
+    try {
+      maybeRunBjHandLogic();
+    } catch (e) {
+      console.error('maybeRunBjHandLogic failed', e);
+      state.bj.lastError = e.message || String(e);
+    }
+    try {
+      maybeApplyMyBjPayout();
+    } catch (e) {
+      console.error('maybeApplyMyBjPayout failed', e);
+      state.bj.lastError = e.message || String(e);
+    }
     render();
-  }, err => console.error('blackjack table listener error', err));
+  }, err => {
+    console.error('blackjack table listener error', err);
+    state.bj.lastError = err.message || String(err);
+    render();
+  });
 }
 function leaveBlackjackScreen() {
   if (unsubBjTable) { unsubBjTable(); unsubBjTable = null; }
   state.bj.table = null;
+  state.bj.lastError = null;
 }
 function myBjSeatIndex() {
   const t = state.bj.table;
@@ -661,45 +703,53 @@ function bjtHandForFirestore(hand) {
 // as pokerStartNextHand.
 // ----------------------------------------------------------------------------
 async function bjtStartNextHand() {
-  const table = state.bj.table;
-  if (!table) return;
-  const seatedIdx = bjtOccupiedSeats(table);
-  if (seatedIdx.length === 0) return;
-
-  // Read everyone's LIVE casino balance right before dealing — the table
-  // doesn't cache chip counts on the seat, so this can never drift out of
-  // sync with what they also have available in Poker.
-  const balances = await Promise.all(seatedIdx.map(i =>
-    db.collection('casinoProfiles').doc(table.seats[i].authUID).get()
-  ));
-  const tableForEngine = { seats: table.seats.map((s, i) => {
-    if (!s) return null;
-    const idx = seatedIdx.indexOf(i);
-    const snap = idx === -1 ? null : balances[idx];
-    return { ...s, chips: snap && snap.exists ? (snap.data().chips ?? 0) : 0 };
-  }) };
-
-  const hand = bjtStartHand(tableForEngine, (table.handNumber || 0) + 1);
-  if (!hand) return; // nobody had a positive, affordable bet once real balances came back
-
-  const ref = db.collection('blackjackTables').doc(BJ_TABLE_ID);
   try {
-    await db.runTransaction(async (tx) => {
-      const snap = await tx.get(ref);
-      const current = snap.exists ? snap.data() : null;
-      const alreadyInHand = current && current.hand && current.hand.phase !== 'complete';
-      if (alreadyInHand) throw new Error('a hand is already in progress');
-      tx.set(ref, {
-        seats: table.seats, handNumber: hand.handNumber,
-        hand: bjtHandForFirestore(hand), requestedAction: null,
-      }, { merge: true });
-    });
-  } catch (e) {
-    return; // someone else won the race to deal — just become an observer
-  }
+    const table = state.bj.table;
+    if (!table) return;
+    const seatedIdx = bjtOccupiedSeats(table);
+    if (seatedIdx.length === 0) return;
 
-  myBjRunningHand = hand;
-  lastProcessedBjActionId = null;
+    // Read everyone's LIVE casino balance right before dealing — the table
+    // doesn't cache chip counts on the seat, so this can never drift out of
+    // sync with what they also have available in Poker.
+    const balances = await Promise.all(seatedIdx.map(i =>
+      db.collection('casinoProfiles').doc(table.seats[i].authUID).get()
+    ));
+    const tableForEngine = { seats: table.seats.map((s, i) => {
+      if (!s) return null;
+      const idx = seatedIdx.indexOf(i);
+      const snap = idx === -1 ? null : balances[idx];
+      return { ...s, chips: snap && snap.exists ? (snap.data().chips ?? 0) : 0 };
+    }) };
+
+    const hand = bjtStartHand(tableForEngine, (table.handNumber || 0) + 1);
+    if (!hand) return; // nobody had a positive, affordable bet once real balances came back
+
+    const ref = db.collection('blackjackTables').doc(BJ_TABLE_ID);
+    try {
+      await db.runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        const current = snap.exists ? snap.data() : null;
+        const alreadyInHand = current && current.hand && current.hand.phase !== 'complete';
+        if (alreadyInHand) throw new Error('a hand is already in progress');
+        tx.set(ref, {
+          seats: table.seats, handNumber: hand.handNumber,
+          hand: bjtHandForFirestore(hand), requestedAction: null,
+        }, { merge: true });
+      });
+    } catch (e) {
+      if (e.message !== 'a hand is already in progress') throw e;
+      return; // someone else won the race to deal — just become an observer
+    }
+
+    myBjRunningHand = hand;
+    lastProcessedBjActionId = null;
+    state.bj.lastError = null;
+  } catch (e) {
+    console.error('bjtStartNextHand failed', e);
+    state.bj.lastError = e.message || String(e);
+    render();
+  }
 }
 
 // Called on every table-doc update. If THIS client is running the current
@@ -722,6 +772,14 @@ function maybeRunBjHandLogic() {
     db.collection('blackjackTables').doc(BJ_TABLE_ID).update({
       hand: bjtHandForFirestore(myBjRunningHand),
       requestedAction: null,
+    }).catch(e => {
+      // This write is what actually applies a Hit/Stand/Double for
+      // everyone — if it fails, the action the player just took never
+      // shows up anywhere, which otherwise looks exactly like the screen
+      // being stuck.
+      console.error('failed to write hand update back to Firestore', e);
+      state.bj.lastError = e.message || String(e);
+      render();
     });
   }
 }
@@ -742,47 +800,87 @@ async function maybeApplyMyBjPayout() {
   if (delta !== 0) await applyChipDelta(delta);
 }
 
+// Every function below is a direct response to a button click, so any
+// Firestore failure (a permission hiccup, a dropped connection, a stale
+// transaction) is caught and surfaced as a visible banner instead of
+// silently doing nothing — which is what a swallowed error here looks like
+// to the person clicking the button: a frozen screen with no explanation.
 async function bjtSitDown(seatIndex) {
-  if (!state.employee || !state.user) return;
-  const ref = db.collection('blackjackTables').doc(BJ_TABLE_ID);
-  await db.runTransaction(async (tx) => {
-    const snap = await tx.get(ref);
-    const table = snap.exists ? snap.data() : { seats: Array(6).fill(null), handNumber: 0, hand: null, requestedAction: null };
-    if (table.seats[seatIndex]) return; // already taken
-    const seats = table.seats.slice();
-    seats[seatIndex] = { employeeId: state.employee.id, authUID: state.user.uid, name: state.employee.name, photoURL: state.employee.photoURL || null, bet: 50 };
-    tx.set(ref, { ...table, seats }, { merge: true });
-  });
+  try {
+    if (!state.employee || !state.user) return;
+    const ref = db.collection('blackjackTables').doc(BJ_TABLE_ID);
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const table = snap.exists ? snap.data() : { seats: Array(6).fill(null), handNumber: 0, hand: null, requestedAction: null };
+      if (table.seats[seatIndex]) return; // already taken
+      const seats = table.seats.slice();
+      seats[seatIndex] = { employeeId: state.employee.id, authUID: state.user.uid, name: state.employee.name, photoURL: state.employee.photoURL || null, bet: 50 };
+      tx.set(ref, { ...table, seats }, { merge: true });
+    });
+    state.bj.lastError = null;
+  } catch (e) {
+    console.error('bjtSitDown failed', e);
+    state.bj.lastError = e.message || String(e);
+    render();
+  }
 }
 async function bjtStandUp() {
-  const table = state.bj.table;
-  const mySeat = myBjSeatIndex();
-  if (!table || mySeat === -1) return;
-  if (table.hand && table.hand.phase !== 'complete') return; // can't leave mid-hand
-  const seats = table.seats.slice();
-  seats[mySeat] = null;
-  await db.collection('blackjackTables').doc(BJ_TABLE_ID).update({ seats });
+  try {
+    const table = state.bj.table;
+    const mySeat = myBjSeatIndex();
+    if (!table || mySeat === -1) return;
+    if (table.hand && table.hand.phase !== 'complete') return; // can't leave mid-hand
+    const seats = table.seats.slice();
+    seats[mySeat] = null;
+    await db.collection('blackjackTables').doc(BJ_TABLE_ID).update({ seats });
+    state.bj.lastError = null;
+  } catch (e) {
+    console.error('bjtStandUp failed', e);
+    state.bj.lastError = e.message || String(e);
+    render();
+  }
 }
 async function bjtSetBet(amount) {
-  const table = state.bj.table;
-  const mySeat = myBjSeatIndex();
-  if (!table || mySeat === -1) return;
-  if (table.hand && table.hand.phase !== 'complete') return; // can't change bet mid-hand
-  const seats = table.seats.slice();
-  seats[mySeat] = { ...seats[mySeat], bet: Math.max(0, amount) };
-  await db.collection('blackjackTables').doc(BJ_TABLE_ID).update({ seats });
+  try {
+    const table = state.bj.table;
+    const mySeat = myBjSeatIndex();
+    if (!table || mySeat === -1) return;
+    if (table.hand && table.hand.phase !== 'complete') return; // can't change bet mid-hand
+    const seats = table.seats.slice();
+    seats[mySeat] = { ...seats[mySeat], bet: Math.max(0, amount) };
+    await db.collection('blackjackTables').doc(BJ_TABLE_ID).update({ seats });
+    state.bj.lastError = null;
+  } catch (e) {
+    console.error('bjtSetBet failed', e);
+    state.bj.lastError = e.message || String(e);
+    render();
+  }
 }
 async function bjtSendAction(type) {
-  const table = state.bj.table;
-  const mySeat = myBjSeatIndex();
-  if (!table || !table.hand || table.hand.currentTurnSeat !== mySeat) return;
-  await db.collection('blackjackTables').doc(BJ_TABLE_ID).update({
-    requestedAction: { authUID: state.user.uid, seat: mySeat, type, handNumber: table.hand.handNumber, actionId: Math.random().toString(36).slice(2) },
-  });
+  try {
+    const table = state.bj.table;
+    const mySeat = myBjSeatIndex();
+    if (!table || !table.hand || table.hand.currentTurnSeat !== mySeat) return;
+    await db.collection('blackjackTables').doc(BJ_TABLE_ID).update({
+      requestedAction: { authUID: state.user.uid, seat: mySeat, type, handNumber: table.hand.handNumber, actionId: Math.random().toString(36).slice(2) },
+    });
+    state.bj.lastError = null;
+  } catch (e) {
+    console.error('bjtSendAction failed', e);
+    state.bj.lastError = e.message || String(e);
+    render();
+  }
 }
 async function bjtResetTable() {
-  await db.collection('blackjackTables').doc(BJ_TABLE_ID).update({ hand: null, requestedAction: null });
-  myBjRunningHand = null;
+  try {
+    await db.collection('blackjackTables').doc(BJ_TABLE_ID).update({ hand: null, requestedAction: null });
+    myBjRunningHand = null;
+    state.bj.lastError = null;
+  } catch (e) {
+    console.error('bjtResetTable failed', e);
+    state.bj.lastError = e.message || String(e);
+    render();
+  }
 }
 
 function cardHtml(card, faceDown) {
@@ -865,6 +963,12 @@ function renderBlackjackScreen() {
       <button class="btn btn-ghost btn-sm" id="bj-done">Done</button>
     </div>
     <div class="content">
+      ${state.bj.lastError ? `
+        <div style="background:rgba(200,60,60,0.15);border:1px solid var(--red-bright);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--red-bright);display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <span>${escapeHtml(state.bj.lastError)}</span>
+          <button class="btn btn-ghost btn-sm" id="bj-dismiss-error" style="flex-shrink:0;">Dismiss</button>
+        </div>
+      ` : ''}
       <div class="chip-count" style="justify-content:center;color:var(--gold-bright);margin-bottom:14px;">
         <span class="chip-icon"></span>${state.chips ?? 0} chips
       </div>
@@ -907,6 +1011,10 @@ function renderBlackjackScreen() {
   `;
 }
 function attachBlackjackHandlers() {
+  document.getElementById('bj-dismiss-error')?.addEventListener('click', () => {
+    state.bj.lastError = null;
+    render();
+  });
   document.getElementById('bj-done')?.addEventListener('click', () => {
     leaveBlackjackScreen();
     state.screen = 'home';

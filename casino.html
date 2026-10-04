@@ -276,6 +276,29 @@
   }
   .deal-anim { animation: dealCardIn 0.3s ease both; }
 
+  /* -------------------------------------------------------------------
+     Blackjack — half-oval table: flat rail at top where the dealer
+     stands, players fanned around the curved front edge, you at the
+     bottom-center.
+  ------------------------------------------------------------------- */
+  .bj-half-wrap {
+    position: relative; width: 100%; max-width: 640px;
+    aspect-ratio: 4 / 3.3; margin: 6px auto 46px;
+  }
+  .bj-half-felt {
+    position: absolute; left: 4%; right: 4%; top: 19%; bottom: 2%;
+    border-radius: 0 0 50% 50% / 0 0 100% 100%;
+    background: var(--felt);
+    background-image:
+      radial-gradient(ellipse at 50% 10%, rgba(255,255,255,0.08), transparent 55%),
+      radial-gradient(ellipse at 50% 100%, rgba(0,0,0,0.3), transparent 65%);
+    box-shadow: 0 0 0 12px var(--rail), 0 0 0 14px var(--rail-light), 0 20px 50px rgba(0,0,0,0.55), inset 0 0 60px rgba(0,0,0,0.35);
+  }
+  .bj-dealer-area {
+    position: absolute; left: 50%; top: 2%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 6px; z-index: 2; width: 80%;
+  }
+
   /* Sound toggle, top-right of the poker screen */
   .sound-toggle {
     width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center;
@@ -1174,7 +1197,7 @@ function cardHtml(card, faceDown, animate, delayIndex) {
 function renderBjSeatPos(table, hand, seatIndex, mySeat, totalSeats, animate) {
   const seat = table.seats[seatIndex];
   const visualIndex = pokerVisualIndex(seatIndex, mySeat, totalSeats);
-  const posStyle = pokerSeatStyle(visualIndex, totalSeats, 44, 40);
+  const posStyle = bjSeatStyle(visualIndex, totalSeats);
 
   if (!seat) {
     return `
@@ -1262,15 +1285,15 @@ function renderBlackjackScreen() {
         <span class="chip-icon"></span>${state.chips ?? 0} chips
       </div>
 
-      <div class="poker-oval-wrap">
-        <div class="poker-oval"></div>
-        <div class="poker-center">
+      <div class="bj-half-wrap">
+        <div class="bj-dealer-area">
           <div style="font-family:var(--font-display);color:var(--cream-dim);font-size:12px;letter-spacing:0.03em;">Dealer</div>
           ${hand ? `
             <div class="hand-row">${hand.dealerCards.map((c, i) => cardHtml(c, i === 1 && !dealerDone, animate, dealerCardDelayBase + i)).join('')}</div>
             <div class="poker-pot-badge">${dealerDone ? dv.total : '?'}</div>
           ` : `<div style="color:var(--text-tertiary);font-size:12px;">No hand in progress</div>`}
         </div>
+        <div class="bj-half-felt"></div>
         ${Array.from({ length: totalSeats }, (_, i) => renderBjSeatPos(table, hand, i, mySeat, totalSeats, animate)).join('')}
       </div>
 
@@ -1420,6 +1443,27 @@ function pokerSeatStyle(visualIndex, totalSeats, rx, ry) {
 function pokerVisualIndex(seatIndex, mySeat, totalSeats) {
   if (mySeat === -1) return seatIndex;
   return (seatIndex - mySeat + totalSeats) % totalSeats;
+}
+
+// Blackjack's table is a half-oval: a flat rail at the top for the dealer,
+// players fanned around the curved front edge below. visualIndex 0 ("you",
+// from pokerVisualIndex) sits at the bottom-center; each seat after that
+// alternates out to the right then the left (1,-1,2,-2,...) so the table
+// stays symmetric around you no matter which seat you're actually in.
+function bjVisualOffset(visualIndex) {
+  if (visualIndex === 0) return 0;
+  const n = Math.ceil(visualIndex / 2);
+  return visualIndex % 2 === 1 ? n : -n;
+}
+function bjSeatStyle(visualIndex, totalSeats) {
+  const maxOffset = Math.max(1, Math.ceil((totalSeats - 1) / 2));
+  const offset = bjVisualOffset(visualIndex);
+  const maxAngleDeg = 78;
+  const theta = (offset / maxOffset) * maxAngleDeg * Math.PI / 180;
+  const cx = 50, cy = 18, rx = 42, ry = 74;
+  const left = cx + rx * Math.sin(theta);
+  const top = cy + ry * Math.cos(theta);
+  return `left:${left.toFixed(2)}%;top:${top.toFixed(2)}%;`;
 }
 
 // Runs every second while the Poker screen is up: (1) as a courtesy, times

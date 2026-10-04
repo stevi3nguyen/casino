@@ -326,6 +326,7 @@ const state = {
     lastSoundWasMyTurn: false,
     lastSoundResultHandNumber: null,
     lastTickSecond: null,
+    lastAnimatedHandNumber: null, // same idea, for the deal-in card animation
   },
   poker: {
     table: null,              // live pokerTables/main doc
@@ -340,6 +341,7 @@ const state = {
     lastSoundResultHandNumber: null,
     lastTickSecond: null,         // last countdown second we played a tick for
     lastAnimatedHandStreet: null, // same idea, for the deal-in card animation
+    lastError: null,              // surfaced in the UI instead of failing silently
   },
 };
 
@@ -726,6 +728,7 @@ function enterBlackjackScreen() {
   state.bj.lastSoundWasMyTurn = false;
   state.bj.lastSoundResultHandNumber = null;
   state.bj.lastTickSecond = null;
+  state.bj.lastAnimatedHandNumber = null;
   unsubBjTable = db.collection('blackjackTables').doc(BJ_TABLE_ID).onSnapshot(snap => {
     state.bj.table = snap.exists ? snap.data() : { seats: Array(6).fill(null), handNumber: 0, hand: null, requestedAction: null };
     // These two run whatever logic this client owes the table (running a
@@ -797,7 +800,13 @@ setInterval(bjTurnTimerTick, 1000);
 // Same "don't replay a sound or animation on every timer-driven re-render"
 // pattern as pokerUpdateSoundsAndAnim — called once per render.
 function bjUpdateSounds(table, hand, mySeat) {
-  if (!hand) { state.bj.lastSoundWasMyTurn = false; state.bj.lastTickSecond = null; return; }
+  let animate = false;
+  if (hand && state.bj.lastAnimatedHandNumber !== hand.handNumber) {
+    animate = true;
+    state.bj.lastAnimatedHandNumber = hand.handNumber;
+  }
+
+  if (!hand) { state.bj.lastSoundWasMyTurn = false; state.bj.lastTickSecond = null; return animate; }
 
   if (state.bj.lastSoundHandNumber !== hand.handNumber) {
     if (state.bj.lastSoundHandNumber !== null) {
@@ -825,6 +834,8 @@ function bjUpdateSounds(table, hand, mySeat) {
     if (anyWin) Sound.win();
     state.bj.lastSoundResultHandNumber = hand.handNumber;
   }
+
+  return animate;
 }
 
 // ----------------------------------------------------------------------------
@@ -1153,31 +1164,33 @@ async function bjtResetTable() {
   }
 }
 
-function cardHtml(card, faceDown) {
-  if (faceDown) return `<div class="playing-card back"></div>`;
+function cardHtml(card, faceDown, animate, delayIndex) {
+  const animAttrs = animate ? ` style="animation-delay:${((delayIndex || 0) * 0.09).toFixed(2)}s"` : '';
+  if (faceDown) return `<div class="playing-card back${animate ? ' deal-anim' : ''}"${animAttrs}></div>`;
   const isRed = card.suit === '♥' || card.suit === '♦';
-  return `<div class="playing-card${isRed ? ' red' : ''}"><div class="pc-rank">${card.rank}</div><div class="pc-suit-big">${card.suit}</div></div>`;
+  return `<div class="playing-card${isRed ? ' red' : ''}${animate ? ' deal-anim' : ''}"${animAttrs}><div class="pc-rank">${card.rank}</div><div class="pc-suit-big">${card.suit}</div></div>`;
 }
 
-function renderBjSeatRow(table, hand, seatIndex, mySeat) {
+function renderBjSeatPos(table, hand, seatIndex, mySeat, totalSeats, animate) {
   const seat = table.seats[seatIndex];
+  const visualIndex = pokerVisualIndex(seatIndex, mySeat, totalSeats);
+  const posStyle = pokerSeatStyle(visualIndex, totalSeats, 44, 40);
+
+  if (!seat) {
+    return `
+      <div class="poker-seat-pos" style="${posStyle}">
+        <div class="poker-empty-seat" data-bj-sit-seat="${seatIndex}">${mySeat === -1 ? 'Sit Here' : ''}</div>
+      </div>
+    `;
+  }
+
   const inHand = hand && hand.participantSeats && hand.participantSeats.includes(seatIndex);
   const isMyTurn = hand && hand.currentTurnSeat === seatIndex;
   const p = inHand ? hand.perSeat[seatIndex] : null;
   const canEditBet = seatIndex === mySeat && (!hand || hand.phase === 'complete');
 
-  if (!seat) {
-    return `
-      <div class="seat-row">
-        <div style="width:36px;height:36px;border-radius:50%;border:1px dashed var(--border);flex-shrink:0;"></div>
-        <div style="flex:1;color:var(--text-tertiary);font-size:13px;">Empty seat</div>
-        ${mySeat === -1 ? `<button class="btn btn-secondary btn-sm" data-bj-sit-seat="${seatIndex}">Sit Here</button>` : ''}
-      </div>
-    `;
-  }
-
   const pv = p ? handValue(p.cards) : null;
-  const outcomeLabels = { playerBlackjack: 'Blackjack! 3:2', push: 'Push', dealerBlackjack: 'Dealer Blackjack', bust: 'Bust', win: 'Win', lose: 'Lose', dealerBust: 'Dealer Busts — Win' };
+  const outcomeLabels = { playerBlackjack: 'BJ! 3:2', push: 'Push', dealerBlackjack: 'Dlr BJ', bust: 'Bust', win: 'Win', lose: 'Lose', dealerBust: 'Win' };
   const goldOutcomes = ['win', 'dealerBust', 'playerBlackjack'];
   const outcomeLabel = p && p.outcome ? (outcomeLabels[p.outcome] || p.outcome) : '';
   const outcomeColor = !outcomeLabel ? 'var(--text-secondary)' : goldOutcomes.includes(p.outcome) ? 'var(--gold-bright)' : p.outcome === 'push' ? 'var(--text-secondary)' : 'var(--red-bright)';
@@ -1186,37 +1199,29 @@ function renderBjSeatRow(table, hand, seatIndex, mySeat) {
   let timerHtml = '';
   if (isMyTurn && hand.turnStartedAt) {
     const remain = Math.max(0, BJ_TURN_LIMIT_MS - (Date.now() - hand.turnStartedAt));
-    const pct = Math.round((remain / BJ_TURN_LIMIT_MS) * 100);
-    timerHtml = `<div class="bj-timer-track"><div class="bj-timer-fill" style="width:${pct}%"></div></div>`;
+    const pct = remain / BJ_TURN_LIMIT_MS;
+    const seconds = Math.ceil(remain / 1000);
+    timerHtml = `<div class="poker-timer-ring" style="--pct:${pct.toFixed(3)}"></div><div class="poker-timer-badge">${seconds}</div>`;
   }
 
   return `
-    <div class="seat-row${isMyTurn ? ' my-turn' : ''}${lostLook ? ' folded' : ''}">
-      ${avatarHtml(seat.name, seat.photoURL, 36)}
-      <div style="flex:1;min-width:0;">
-        <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px;">
-          ${escapeHtml(seat.name)}${seatIndex === mySeat ? ' (you)' : ''}
-        </div>
-        ${canEditBet ? `
-          <div class="chip-count" style="color:var(--gold-bright);font-size:12px;font-weight:600;gap:4px;">
-            <span class="chip-icon" style="width:12px;height:12px;"></span>Bet
-            <button class="btn btn-ghost btn-sm" data-bj-bet-delta="-25" style="padding:2px 8px;">−</button>
-            ${seat.bet || 0}
-            <button class="btn btn-ghost btn-sm" data-bj-bet-delta="25" style="padding:2px 8px;">+</button>
-          </div>
-        ` : `
-          <div class="chip-count" style="color:var(--text-secondary);font-size:12px;font-weight:400;">
-            <span class="chip-icon" style="width:12px;height:12px;"></span>Bet ${p ? p.bet : (seat.bet || 0)}
-          </div>
-        `}
+    <div class="poker-seat-pos${isMyTurn ? ' my-turn' : ''}${lostLook ? ' folded' : ''}" style="${posStyle}">
+      <div class="poker-seat-avatar-wrap">
         ${timerHtml}
+        ${avatarHtml(seat.name, seat.photoURL, 50)}
       </div>
+      <div class="poker-seat-name">${escapeHtml(seat.name)}${seatIndex === mySeat ? ' (you)' : ''}</div>
+      ${canEditBet ? `
+        <div style="display:flex;align-items:center;gap:3px;">
+          <button class="btn btn-ghost btn-sm" data-bj-bet-delta="-25" style="padding:1px 6px;font-size:11px;">−</button>
+          <span class="poker-seat-chips">Bet ${seat.bet || 0}</span>
+          <button class="btn btn-ghost btn-sm" data-bj-bet-delta="25" style="padding:1px 6px;font-size:11px;">+</button>
+        </div>
+      ` : `<div class="poker-seat-chips">Bet ${p ? p.bet : (seat.bet || 0)}</div>`}
       ${p ? `
-        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-          <div style="display:flex;gap:3px;">${p.cards.map(c => cardHtml(c, false)).join('')}</div>
-          <div style="font-size:12px;color:${outcomeColor};font-weight:600;white-space:nowrap;">
-            ${pv ? `${pv.total}${pv.isSoft ? ' (soft)' : ''}` : ''}${outcomeLabel ? ` — ${escapeHtml(outcomeLabel)}` : ''}
-          </div>
+        <div class="poker-seat-cards">${p.cards.map((c, i) => cardHtml(c, false, animate, visualIndex * 2 + i)).join('')}</div>
+        <div style="font-size:11px;color:${outcomeColor};font-weight:600;white-space:nowrap;">
+          ${pv ? `${pv.total}${pv.isSoft ? ' (soft)' : ''}` : ''}${outcomeLabel ? ` — ${escapeHtml(outcomeLabel)}` : ''}
         </div>
       ` : ''}
     </div>
@@ -1234,7 +1239,9 @@ function renderBlackjackScreen() {
   const dealerDone = hand && hand.phase === 'complete';
   const dv = hand ? handValue(hand.dealerCards) : null;
   const myLegal = hand ? bjtLegalActions(hand, mySeat) : null;
-  bjUpdateSounds(table, hand, mySeat);
+  const totalSeats = table.seats.length || 6;
+  const animate = bjUpdateSounds(table, hand, mySeat);
+  const dealerCardDelayBase = totalSeats * 2;
 
   return `
     <div class="topbar">
@@ -1255,17 +1262,16 @@ function renderBlackjackScreen() {
         <span class="chip-icon"></span>${state.chips ?? 0} chips
       </div>
 
-      <div class="card" style="padding:18px 14px;margin-bottom:16px;">
-        <div style="text-align:center;margin-bottom:14px;">
-          <div style="font-family:var(--font-display);color:var(--cream-dim);font-size:13px;letter-spacing:0.02em;margin-bottom:10px;">Dealer</div>
+      <div class="poker-oval-wrap">
+        <div class="poker-oval"></div>
+        <div class="poker-center">
+          <div style="font-family:var(--font-display);color:var(--cream-dim);font-size:12px;letter-spacing:0.03em;">Dealer</div>
           ${hand ? `
-            <div class="hand-row">${hand.dealerCards.map((c, i) => cardHtml(c, i === 1 && !dealerDone)).join('')}</div>
-            <div style="margin-top:8px;color:var(--gold-bright);font-weight:700;font-variant-numeric:tabular-nums;">${dealerDone ? dv.total : '?'}</div>
-          ` : `<div style="color:var(--text-tertiary);font-size:13px;padding:6px 0;">No hand in progress</div>`}
+            <div class="hand-row">${hand.dealerCards.map((c, i) => cardHtml(c, i === 1 && !dealerDone, animate, dealerCardDelayBase + i)).join('')}</div>
+            <div class="poker-pot-badge">${dealerDone ? dv.total : '?'}</div>
+          ` : `<div style="color:var(--text-tertiary);font-size:12px;">No hand in progress</div>`}
         </div>
-        <div style="margin-top:4px;">
-          ${Array.from({length: 6}, (_, i) => renderBjSeatRow(table, hand, i, mySeat)).join('')}
-        </div>
+        ${Array.from({ length: totalSeats }, (_, i) => renderBjSeatPos(table, hand, i, mySeat, totalSeats, animate)).join('')}
       </div>
 
       ${mySeat === -1 ? `
@@ -1366,14 +1372,25 @@ function enterPokerScreen() {
   state.poker.lastSoundResultHandNumber = null;
   state.poker.lastAnimatedHandStreet = null;
   state.poker.lastTickSecond = null;
+  state.poker.lastError = null;
   unsubPokerTable = db.collection('pokerTables').doc(POKER_TABLE_ID).onSnapshot(snap => {
     state.poker.table = snap.exists ? snap.data() : { seats: Array(8).fill(null), dealerSeat: null, handNumber: 0, hand: null, requestedAction: null };
     // Same reasoning as the Blackjack listener: if either of these throws,
     // render() must still run or the screen is left stuck on stale state.
-    try { maybeRunHandLogic(); } catch (e) { console.error('maybeRunHandLogic failed', e); }
-    try { maybeApplyMyPayout(); } catch (e) { console.error('maybeApplyMyPayout failed', e); }
+    try { maybeRunHandLogic(); } catch (e) {
+      console.error('maybeRunHandLogic failed', e);
+      state.poker.lastError = e.message || String(e);
+    }
+    try { maybeApplyMyPayout(); } catch (e) {
+      console.error('maybeApplyMyPayout failed', e);
+      state.poker.lastError = e.message || String(e);
+    }
     render();
-  }, err => console.error('poker table listener error', err));
+  }, err => {
+    console.error('poker table listener error', err);
+    state.poker.lastError = err.message || String(err);
+    render();
+  });
   if (state.user) {
     unsubPokerPrivate = db.collection('pokerTables').doc(POKER_TABLE_ID).collection('private').doc(state.user.uid)
       .onSnapshot(snap => {
@@ -1387,6 +1404,7 @@ function leavePokerScreen() {
   if (unsubPokerPrivate) { unsubPokerPrivate(); unsubPokerPrivate = null; }
   state.poker.table = null;
   state.poker.myHoleCards = null;
+  state.poker.lastError = null;
 }
 
 // A visual position (as a percentage point on the oval) for a seat, with
@@ -1693,57 +1711,68 @@ function pokerHandForFirestore(hand) {
 // players clicking Deal at the same instant can't both start a hand.
 // ----------------------------------------------------------------------------
 async function pokerStartNextHand() {
-  const table = state.poker.table;
-  if (!table) return;
-  const seatedIdx = pokerOccupiedSeats(table);
-  if (seatedIdx.length < 2) return;
-
-  // Read everyone's LIVE casino balance right before dealing — the table
-  // doesn't cache chip counts on the seat, so this can never drift out of
-  // sync with what they also have available in Blackjack.
-  const balances = await Promise.all(seatedIdx.map(i =>
-    db.collection('casinoProfiles').doc(table.seats[i].authUID).get()
-  ));
-  const tableForEngine = { seats: table.seats.map((s, i) => {
-    if (!s) return null;
-    const idx = seatedIdx.indexOf(i);
-    const snap = idx === -1 ? null : balances[idx];
-    return { ...s, chips: snap && snap.exists ? (snap.data().chips ?? 0) : 0 };
-  }), dealerSeat: table.dealerSeat, handNumber: table.handNumber || 0 };
-
-  const holeCardsOut = {};
-  const hand = pokerStartHand(tableForEngine, holeCardsOut);
-  if (!hand) return; // fewer than 2 funded players once real balances came back
-
-  const ref = db.collection('pokerTables').doc(POKER_TABLE_ID);
   try {
-    await db.runTransaction(async (tx) => {
-      const snap = await tx.get(ref);
-      const current = snap.exists ? snap.data() : null;
-      const alreadyInHand = current && current.hand && current.hand.street !== 'complete';
-      if (alreadyInHand) throw new Error('a hand is already in progress');
-      tx.set(ref, {
-        seats: table.seats, dealerSeat: hand.dealerSeat, handNumber: hand.handNumber,
-        hand: pokerHandForFirestore(hand), requestedAction: null,
-      }, { merge: true });
-    });
-  } catch (e) {
-    return; // someone else won the race to deal — just become an observer
-  }
+    const table = state.poker.table;
+    if (!table) return;
+    const seatedIdx = pokerOccupiedSeats(table);
+    if (seatedIdx.length < 2) return;
 
-  myRunningHand = hand;
-  myRunningHoleCards = holeCardsOut;
-  lastProcessedActionId = null;
-  await Promise.all(seatedIdx.map(i =>
-    db.collection('pokerTables').doc(POKER_TABLE_ID).collection('private').doc(table.seats[i].authUID)
-      .set({ cards: holeCardsOut[i], handNumber: hand.handNumber })
-  ));
+    // Read everyone's LIVE casino balance right before dealing — the table
+    // doesn't cache chip counts on the seat, so this can never drift out of
+    // sync with what they also have available in Blackjack.
+    const balances = await Promise.all(seatedIdx.map(i =>
+      db.collection('casinoProfiles').doc(table.seats[i].authUID).get()
+    ));
+    const tableForEngine = { seats: table.seats.map((s, i) => {
+      if (!s) return null;
+      const idx = seatedIdx.indexOf(i);
+      const snap = idx === -1 ? null : balances[idx];
+      return { ...s, chips: snap && snap.exists ? (snap.data().chips ?? 0) : 0 };
+    }), dealerSeat: table.dealerSeat, handNumber: table.handNumber || 0 };
+
+    const holeCardsOut = {};
+    const hand = pokerStartHand(tableForEngine, holeCardsOut);
+    if (!hand) return; // fewer than 2 funded players once real balances came back
+
+    const ref = db.collection('pokerTables').doc(POKER_TABLE_ID);
+    try {
+      await db.runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        const current = snap.exists ? snap.data() : null;
+        const alreadyInHand = current && current.hand && current.hand.street !== 'complete';
+        if (alreadyInHand) throw new Error('a hand is already in progress');
+        tx.set(ref, {
+          seats: table.seats, dealerSeat: hand.dealerSeat, handNumber: hand.handNumber,
+          hand: pokerHandForFirestore(hand), requestedAction: null,
+        }, { merge: true });
+      });
+    } catch (e) {
+      if (e.message !== 'a hand is already in progress') throw e;
+      return; // someone else won the race to deal — just become an observer
+    }
+
+    myRunningHand = hand;
+    myRunningHoleCards = holeCardsOut;
+    lastProcessedActionId = null;
+    await Promise.all(seatedIdx.map(i =>
+      db.collection('pokerTables').doc(POKER_TABLE_ID).collection('private').doc(table.seats[i].authUID)
+        .set({ cards: holeCardsOut[i], handNumber: hand.handNumber })
+    ));
+    state.poker.lastError = null;
+  } catch (e) {
+    console.error('pokerStartNextHand failed', e);
+    state.poker.lastError = e.message || String(e);
+    render();
+  }
 }
 
 // Called on every table-doc update. If THIS client is the one running the
 // current hand (it has `myRunningHand` in memory) and a player has posted a
 // `requestedAction` that hasn't been processed yet, apply it and push the
-// updated public state back to Firestore.
+// updated public state back to Firestore. This is the one place a dropped
+// error used to look like a button "doing nothing": if pokerApplyAction
+// rejected the action (or the write-back failed) with no visible trace, the
+// clicking player saw no change and no explanation.
 function maybeRunHandLogic() {
   const table = state.poker.table;
   if (!table || !myRunningHand || !table.hand) return;
@@ -1757,6 +1786,8 @@ function maybeRunHandLogic() {
       pokerApplyAction(myRunningHand, req.seat, req.type, req.amount);
     } catch (e) {
       console.error('poker action rejected', e.message);
+      state.poker.lastError = `That action was rejected: ${e.message}`;
+      render();
     }
     if (myRunningHand.street === 'showdown') {
       pokerFinishShowdown(myRunningHand, myRunningHoleCards);
@@ -1764,6 +1795,10 @@ function maybeRunHandLogic() {
     db.collection('pokerTables').doc(POKER_TABLE_ID).update({
       hand: pokerHandForFirestore(myRunningHand),
       requestedAction: null,
+    }).catch(e => {
+      console.error('failed to write hand update back to Firestore', e);
+      state.poker.lastError = e.message || String(e);
+      render();
     });
   }
 }
@@ -1786,42 +1821,66 @@ async function maybeApplyMyPayout() {
 }
 
 async function pokerSitDown(seatIndex) {
-  if (!state.employee || !state.user) return;
-  const ref = db.collection('pokerTables').doc(POKER_TABLE_ID);
-  await db.runTransaction(async (tx) => {
-    const snap = await tx.get(ref);
-    const table = snap.exists ? snap.data() : { seats: Array(8).fill(null), dealerSeat: null, handNumber: 0, hand: null, requestedAction: null };
-    if (table.seats[seatIndex]) return; // already taken
-    const seats = table.seats.slice();
-    seats[seatIndex] = { employeeId: state.employee.id, authUID: state.user.uid, name: state.employee.name, photoURL: state.employee.photoURL || null };
-    tx.set(ref, { ...table, seats }, { merge: true });
-  });
+  try {
+    if (!state.employee || !state.user) return;
+    const ref = db.collection('pokerTables').doc(POKER_TABLE_ID);
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const table = snap.exists ? snap.data() : { seats: Array(8).fill(null), dealerSeat: null, handNumber: 0, hand: null, requestedAction: null };
+      if (table.seats[seatIndex]) return; // already taken
+      const seats = table.seats.slice();
+      seats[seatIndex] = { employeeId: state.employee.id, authUID: state.user.uid, name: state.employee.name, photoURL: state.employee.photoURL || null };
+      tx.set(ref, { ...table, seats }, { merge: true });
+    });
+    state.poker.lastError = null;
+  } catch (e) {
+    console.error('pokerSitDown failed', e);
+    state.poker.lastError = e.message || String(e);
+    render();
+  }
 }
 async function pokerStandUp() {
-  const table = state.poker.table;
-  const mySeat = myPokerSeatIndex();
-  if (!table || mySeat === -1) return;
-  if (table.hand && table.hand.street !== 'complete') return; // can't leave mid-hand
-  const seats = table.seats.slice();
-  seats[mySeat] = null;
-  await db.collection('pokerTables').doc(POKER_TABLE_ID).update({ seats });
+  try {
+    const table = state.poker.table;
+    const mySeat = myPokerSeatIndex();
+    if (!table || mySeat === -1) return;
+    if (table.hand && table.hand.street !== 'complete') return; // can't leave mid-hand
+    const seats = table.seats.slice();
+    seats[mySeat] = null;
+    await db.collection('pokerTables').doc(POKER_TABLE_ID).update({ seats });
+    state.poker.lastError = null;
+  } catch (e) {
+    console.error('pokerStandUp failed', e);
+    state.poker.lastError = e.message || String(e);
+    render();
+  }
 }
 async function pokerSendAction(type, amount) {
-  const table = state.poker.table;
-  const mySeat = myPokerSeatIndex();
-  if (!table || !table.hand || table.hand.currentTurnSeat !== mySeat) return;
-  if (type === 'fold') Sound.fold(); else Sound.chip();
   try {
+    const table = state.poker.table;
+    const mySeat = myPokerSeatIndex();
+    if (!table || !table.hand || table.hand.currentTurnSeat !== mySeat) return;
+    if (type === 'fold') Sound.fold(); else Sound.chip();
     await db.collection('pokerTables').doc(POKER_TABLE_ID).update({
       requestedAction: { authUID: state.user.uid, seat: mySeat, type, amount: amount ?? null, handNumber: table.hand.handNumber, actionId: Math.random().toString(36).slice(2) },
     });
+    state.poker.lastError = null;
   } catch (e) {
     console.error('pokerSendAction failed', e);
+    state.poker.lastError = e.message || String(e);
+    render();
   }
 }
 async function pokerResetTable() {
-  await db.collection('pokerTables').doc(POKER_TABLE_ID).update({ hand: null, requestedAction: null });
-  myRunningHand = null; myRunningHoleCards = null;
+  try {
+    await db.collection('pokerTables').doc(POKER_TABLE_ID).update({ hand: null, requestedAction: null });
+    myRunningHand = null; myRunningHoleCards = null;
+    state.poker.lastError = null;
+  } catch (e) {
+    console.error('pokerResetTable failed', e);
+    state.poker.lastError = e.message || String(e);
+    render();
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -1921,6 +1980,12 @@ function renderPokerScreen() {
       </div>
     </div>
     <div class="content">
+      ${state.poker.lastError ? `
+        <div style="background:rgba(200,60,60,0.15);border:1px solid var(--red-bright);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--red-bright);display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <span>${escapeHtml(state.poker.lastError)}</span>
+          <button class="btn btn-ghost btn-sm" id="poker-dismiss-error" style="flex-shrink:0;">Dismiss</button>
+        </div>
+      ` : ''}
       <div class="chip-count" style="justify-content:center;color:var(--gold-bright);margin-bottom:14px;">
         <span class="chip-icon"></span>${state.chips ?? 0} chips
       </div>
@@ -2049,6 +2114,10 @@ function renderPokerActionControls(hand, mySeat) {
 }
 
 function attachPokerHandlers() {
+  document.getElementById('poker-dismiss-error')?.addEventListener('click', () => {
+    state.poker.lastError = null;
+    render();
+  });
   document.getElementById('poker-sound-toggle')?.addEventListener('click', () => {
     Sound.setEnabled(!Sound.enabled);
     render();

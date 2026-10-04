@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shirasoni Casino</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<!-- Firebase (compat/UMD builds so this works as plain <script> tags, no build step) — SAME project as the Shirasoni Schedule app, so logins and profile photos are shared. -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --bg-elevated: #161616;
+    --bg-elevated-2: #1f1f1f;
+    --border: #2a2a2a;
+    --text: #f2f2f2;
+    --text-secondary: #9a9a9a;
+    --text-tertiary: #6b6b6b;
+    --accent: #15803d;
+    --accent-dim: rgba(21, 128, 61, 0.18);
+    --green: #22c55e;
+    --red: #ef4444;
+    --gold: #eab308;
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font-family: var(--font); cursor: pointer; }
+  input, select { font-family: var(--font); }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+
+  #root { min-height: 100vh; }
+
+  .avatar {
+    border-radius: 50%; flex-shrink: 0; display: inline-flex; align-items: center;
+    justify-content: center; font-weight: 700; color: white; overflow: hidden;
+    background-size: cover; background-position: center;
+  }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 10px 16px; border-radius: 10px; border: none;
+    font-size: 14px; font-weight: 600; transition: opacity .15s;
+  }
+  .btn:hover { opacity: 0.88; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-secondary { background: var(--bg-elevated-2); color: var(--text); border: 1px solid var(--border); }
+  .btn-danger { background: rgba(239,68,68,0.15); color: var(--red); }
+  .btn-ghost { background: transparent; color: var(--text-secondary); }
+  .btn-sm { padding: 6px 12px; font-size: 13px; }
+  .btn-block { width: 100%; }
+
+  .input {
+    width: 100%; padding: 11px 13px; border-radius: 10px;
+    background: var(--bg-elevated-2); border: 1px solid var(--border);
+    color: var(--text); font-size: 14px; outline: none;
+  }
+  .input:focus { border-color: var(--accent); }
+  .label { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; display: block; }
+
+  .card { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 14px; }
+
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 20px 10px; gap: 12px; flex-wrap: wrap;
+  }
+  .page-title { font-size: 26px; font-weight: 800; margin: 0; }
+  .content { padding: 0 20px 40px; max-width: 760px; margin: 0 auto; }
+  ::placeholder { color: var(--text-tertiary); }
+
+  .playing-card {
+    width: 50px; height: 70px; border-radius: 8px; background: #fff; color: #111;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-weight: 700; border: 1px solid var(--border); flex-shrink: 0;
+  }
+  .playing-card.red { color: #c0392b; }
+  .playing-card.back { background: var(--accent); color: var(--accent); }
+  .hand-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+// ============================================================================
+// FIREBASE SETUP — same project as the Shirasoni Schedule app. This app only
+// ever signs in to accounts that already exist (created via the schedule
+// app's sign-up) — it never creates one — so the login and profile photo are
+// automatically the same everywhere.
+// ============================================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyA_06sen_u_3kvZ4OmsxwzSvYVdlKuDVkc",
+  authDomain: "shirasoni-schedule.firebaseapp.com",
+  projectId: "shirasoni-schedule",
+  storageBucket: "shirasoni-schedule.firebasestorage.app",
+  messagingSenderId: "1084268857358",
+  appId: "1:1084268857358:web:5b617f10271aa12798945f",
+  measurementId: "G-DL9YSWZL0Z"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+const STARTING_CHIPS = 1000;
+
+const state = {
+  authReady: false,
+  user: null,
+  employee: null,
+  employeeLookupCompleted: false,
+  chips: null,
+  authError: null,
+  screen: 'home',       // 'home' | 'blackjack'
+  blackjack: null,      // active BlackjackRound-equivalent object, or null
+};
+
+let unsubEmployee = null;
+let unsubProfile = null;
+
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function avatarHtml(name, photoURL, size) {
+  if (photoURL) {
+    return `<div class="avatar" style="width:${size}px;height:${size}px;background-image:url('${photoURL}');"></div>`;
+  }
+  const initials = (name || '?').split(' ').slice(0,2).map(p => p[0]).join('').toUpperCase() || '?';
+  let hash = 0;
+  for (const ch of (name || '')) hash += ch.charCodeAt(0);
+  const hue = hash % 360;
+  return `<div class="avatar" style="width:${size}px;height:${size}px;background:hsl(${hue},45%,45%);font-size:${size*0.4}px;">${initials}</div>`;
+}
+
+auth.onAuthStateChanged(user => {
+  state.authReady = true;
+  state.user = user;
+  if (unsubEmployee) { unsubEmployee(); unsubEmployee = null; }
+  if (unsubProfile) { unsubProfile(); unsubProfile = null; }
+  if (user) {
+    state.employeeLookupCompleted = false;
+    unsubEmployee = db.collection('employees').where('authUID', '==', user.uid)
+      .onSnapshot(snap => {
+        state.employee = snap.docs.length ? { id: snap.docs[0].id, ...snap.docs[0].data() } : null;
+        state.employeeLookupCompleted = true;
+        render();
+      }, err => { console.error(err); state.employeeLookupCompleted = true; render(); });
+    unsubProfile = db.collection('casinoProfiles').doc(user.uid)
+      .onSnapshot(snap => {
+        if (snap.exists) {
+          state.chips = snap.data().chips;
+        } else {
+          // First time opening the casino — give them a starting stack.
+          // Using the Auth UID as the doc ID (not an auto ID) means this
+          // can't double-fire into two different starting documents.
+          db.collection('casinoProfiles').doc(user.uid).set({
+            authUID: user.uid, chips: STARTING_CHIPS, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
+        render();
+      }, err => console.error(err));
+  } else {
+    state.employee = null;
+    state.employeeLookupCompleted = false;
+    state.chips = null;
+  }
+  render();
+});
+
+async function signIn(email, password) {
+  state.authError = null;
+  try {
+    await auth.signInWithEmailAndPassword(email, password);
+  } catch (e) {
+    state.authError = e.message;
+    render();
+  }
+}
+function signOut() { auth.signOut(); state.screen = 'home'; state.blackjack = null; }
+
+// Applies a chip delta (+/-) with a transaction so two quick writes can
+// never race each other and clobber one balance.
+async function applyChipDelta(delta) {
+  const uid = state.user?.uid;
+  if (!uid) return;
+  const ref = db.collection('casinoProfiles').doc(uid);
+  try {
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const current = snap.exists ? (snap.data().chips ?? STARTING_CHIPS) : STARTING_CHIPS;
+      tx.update(ref, { chips: Math.max(0, current + delta) });
+    });
+  } catch (e) { console.error(e); }
+}
+async function resetChips() {
+  const uid = state.user?.uid;
+  if (!uid) return;
+  await db.collection('casinoProfiles').doc(uid).update({ chips: STARTING_CHIPS });
+}
+
+// ============================================================================
+// RENDER DISPATCH
+// ============================================================================
+function render() {
+  const root = document.getElementById('root');
+  if (!state.authReady) {
+    root.innerHTML = `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;color:var(--text-tertiary)">Loading…</div>`;
+    return;
+  }
+  if (!state.user) {
+    root.innerHTML = renderAuthScreen();
+    attachAuthHandlers();
+    return;
+  }
+  if (!state.employeeLookupCompleted) {
+    root.innerHTML = `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;color:var(--text-tertiary)">Loading your profile…</div>`;
+    return;
+  }
+  if (!state.employee) {
+    root.innerHTML = renderNoProfileScreen();
+    document.getElementById('npf-signout')?.addEventListener('click', signOut);
+    return;
+  }
+  if (state.screen === 'blackjack' && state.blackjack) {
+    root.innerHTML = renderBlackjackScreen();
+    attachBlackjackHandlers();
+    return;
+  }
+  root.innerHTML = renderHomeScreen();
+  attachHomeHandlers();
+}
+
+function renderAuthScreen() {
+  return `
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;">
+    <div style="width:100%;max-width:380px;">
+      <div style="text-align:center;margin-bottom:28px;">
+        <div style="font-size:40px;margin-bottom:10px;">♠️</div>
+        <h1 style="font-size:26px;font-weight:800;margin:0 0 4px;">Shirasoni Casino</h1>
+        <p style="color:var(--text-secondary);margin:0;font-size:14px;">Sign in with your Shirasoni Schedule account.</p>
+      </div>
+      <div class="card" style="padding:20px;">
+        <label class="label">Email</label>
+        <input class="input" id="auth-email" type="email" placeholder="you@example.com" style="margin-bottom:14px;" autocomplete="username">
+        <label class="label">Password</label>
+        <input class="input" id="auth-password" type="password" placeholder="••••••••" style="margin-bottom:18px;" autocomplete="current-password">
+        ${state.authError ? `<p style="color:var(--red);font-size:13px;margin:0 0 14px;">${escapeHtml(state.authError)}</p>` : ''}
+        <button class="btn btn-primary btn-block" id="btn-signin">Sign In</button>
+      </div>
+      <p style="text-align:center;color:var(--text-tertiary);font-size:12px;margin-top:16px;">Don't have an account yet? Sign up in the Shirasoni Schedule app first.</p>
+    </div>
+  </div>`;
+}
+function attachAuthHandlers() {
+  const $ = id => document.getElementById(id);
+  const doSignIn = () => signIn($('auth-email').value.trim(), $('auth-password').value);
+  $('btn-signin')?.addEventListener('click', doSignIn);
+  $('auth-password')?.addEventListener('keydown', e => { if (e.key === 'Enter') doSignIn(); });
+}
+
+function renderNoProfileScreen() {
+  return `
+    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;">
+      <div style="max-width:380px;text-align:center;">
+        <div style="font-size:40px;margin-bottom:12px;">⚠️</div>
+        <h2 style="margin:0 0 10px;">No Staff Profile Found</h2>
+        <p style="color:var(--text-secondary);font-size:14px;line-height:1.5;margin:0 0 20px;">
+          Your login worked, but there's no staff profile linked to this account — sign in with the same account you use for the Shirasoni Schedule app.
+        </p>
+        <button class="btn btn-danger" id="npf-signout">Sign Out</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderHomeScreen() {
+  return `
+    <div class="topbar">
+      <h1 class="page-title">Shirasoni Casino</h1>
+      <button class="btn btn-secondary btn-sm" id="home-signout">Sign Out</button>
+    </div>
+    <div class="content">
+      <div class="card" style="padding:20px;text-align:center;margin-bottom:20px;">
+        ${avatarHtml(state.employee.name, state.employee.photoURL, 64)}
+        <div style="font-weight:700;margin-top:10px;">${escapeHtml(state.employee.name)}</div>
+        <div style="color:var(--gold);font-weight:700;margin-top:6px;">${state.chips ?? '…'} chips</div>
+        ${state.chips === 0 ? `<button class="btn btn-ghost btn-sm" id="home-get-chips" style="margin-top:6px;">Get More Chips</button>` : ''}
+      </div>
+      <div class="card" style="padding:16px;display:flex;align-items:center;gap:14px;cursor:pointer;margin-bottom:12px;" id="home-play-blackjack">
+        <div style="font-size:28px;">♠️</div>
+        <div style="flex:1;">
+          <div style="font-weight:700;">Blackjack</div>
+          <div style="color:var(--text-secondary);font-size:13px;">You vs. the dealer. Hit, stand, or double down.</div>
+        </div>
+        <div style="color:var(--text-tertiary);">›</div>
+      </div>
+      <div class="card" style="padding:16px;display:flex;align-items:center;gap:14px;opacity:0.5;">
+        <div style="font-size:28px;">👥</div>
+        <div style="flex:1;">
+          <div style="font-weight:700;">Texas Hold'em</div>
+          <div style="color:var(--text-secondary);font-size:13px;">Coming soon</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+function attachHomeHandlers() {
+  document.getElementById('home-signout')?.addEventListener('click', signOut);
+  document.getElementById('home-get-chips')?.addEventListener('click', resetChips);
+  document.getElementById('home-play-blackjack')?.addEventListener('click', () => {
+    state.screen = 'blackjack';
+    state.blackjack = newBlackjackState();
+    render();
+  });
+}
+
+// ============================================================================
+// BLACKJACK — single fresh 52-card deck per round (no multi-deck shoe; there's
+// no card-counting concern worth guarding against in a casual game played
+// for fake chips among coworkers). Dealer stands on 17+ (hits a soft 17),
+// blackjack pays 3:2, double down allowed on the first two cards.
+// ============================================================================
+const SUITS = ['♠', '♥', '♦', '♣'];
+const RANKS = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+
+function freshShuffledDeck() {
+  const deck = [];
+  for (const suit of SUITS) for (const rank of RANKS) deck.push({ rank, suit });
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  return deck;
+}
+function cardValue(rank) {
+  if (rank === 'A') return 11;
+  if (rank === 'J' || rank === 'Q' || rank === 'K') return 10;
+  return parseInt(rank, 10);
+}
+function handValue(cards) {
+  let total = cards.reduce((sum, c) => sum + cardValue(c.rank), 0);
+  let aces = cards.filter(c => c.rank === 'A').length;
+  while (total > 21 && aces > 0) { total -= 10; aces--; }
+  return { total, isSoft: aces > 0 };
+}
+function newBlackjackState() {
+  return {
+    deck: freshShuffledDeck(),
+    playerCards: [],
+    dealerCards: [],
+    phase: 'betting',   // 'betting' | 'playerTurn' | 'roundOver'
+    bet: 50,
+    outcome: null,      // { message, delta }
+  };
+}
+function bjDraw(bj) {
+  if (bj.deck.length === 0) bj.deck = freshShuffledDeck();
+  return bj.deck.pop();
+}
+function bjDeal(bj) {
+  bj.deck = freshShuffledDeck();
+  bj.playerCards = [bjDraw(bj), bjDraw(bj)];
+  bj.dealerCards = [bjDraw(bj), bjDraw(bj)];
+  bj.phase = 'playerTurn';
+  bj.outcome = null;
+  const playerBJ = handValue(bj.playerCards).total === 21;
+  const dealerBJ = handValue(bj.dealerCards).total === 21;
+  if (playerBJ || dealerBJ) {
+    bj.phase = 'roundOver';
+    if (playerBJ && dealerBJ) bj.outcome = { message: 'Push — bet returned.', delta: 0 };
+    else if (playerBJ) bj.outcome = { message: 'Blackjack! You win 3:2.', delta: Math.floor(bj.bet * 1.5) };
+    else bj.outcome = { message: 'Dealer wins.', delta: -bj.bet };
+  }
+}
+function bjPlayDealerAndResolve(bj) {
+  let dv = handValue(bj.dealerCards);
+  while (dv.total < 17 || (dv.total === 17 && dv.isSoft)) {
+    bj.dealerCards.push(bjDraw(bj));
+    dv = handValue(bj.dealerCards);
+  }
+  bj.phase = 'roundOver';
+  const pv = handValue(bj.playerCards);
+  if (dv.total > 21) bj.outcome = { message: 'Dealer busts — you win!', delta: bj.bet };
+  else if (pv.total > dv.total) bj.outcome = { message: 'You win!', delta: bj.bet };
+  else if (pv.total < dv.total) bj.outcome = { message: 'Dealer wins.', delta: -bj.bet };
+  else bj.outcome = { message: 'Push — bet returned.', delta: 0 };
+}
+function bjHit(bj) {
+  bj.playerCards.push(bjDraw(bj));
+  if (handValue(bj.playerCards).total > 21) {
+    bj.phase = 'roundOver';
+    bj.outcome = { message: 'Bust — you lose.', delta: -bj.bet };
+  }
+}
+function bjStand(bj) { bjPlayDealerAndResolve(bj); }
+function bjDoubleDown(bj) {
+  bj.bet *= 2;
+  bj.playerCards.push(bjDraw(bj));
+  if (handValue(bj.playerCards).total > 21) {
+    bj.phase = 'roundOver';
+    bj.outcome = { message: 'Bust — you lose.', delta: -bj.bet };
+  } else {
+    bjPlayDealerAndResolve(bj);
+  }
+}
+
+function cardHtml(card, faceDown) {
+  if (faceDown) return `<div class="playing-card back"></div>`;
+  const isRed = card.suit === '♥' || card.suit === '♦';
+  return `<div class="playing-card${isRed ? ' red' : ''}"><div>${card.rank}</div><div>${card.suit}</div></div>`;
+}
+
+function renderBlackjackScreen() {
+  const bj = state.blackjack;
+  const dealerDone = bj.phase === 'roundOver';
+  const pv = handValue(bj.playerCards);
+  const dv = handValue(bj.dealerCards);
+  return `
+    <div class="topbar">
+      <h1 class="page-title">Blackjack</h1>
+      <button class="btn btn-secondary btn-sm" id="bj-done">Done</button>
+    </div>
+    <div class="content">
+      <div style="text-align:center;color:var(--gold);font-weight:700;margin-bottom:16px;">${state.chips ?? 0} chips</div>
+
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="color:var(--text-secondary);font-size:13px;font-weight:600;margin-bottom:8px;">Dealer</div>
+        <div class="hand-row">
+          ${bj.dealerCards.map((c, i) => cardHtml(c, i === 1 && !dealerDone)).join('')}
+        </div>
+        ${bj.phase !== 'betting' ? `<div style="margin-top:6px;color:var(--text-secondary);font-size:13px;">${dealerDone ? dv.total : '?'}</div>` : ''}
+      </div>
+
+      <div style="text-align:center;margin-bottom:24px;">
+        <div class="hand-row">
+          ${bj.playerCards.map(c => cardHtml(c, false)).join('')}
+        </div>
+        ${bj.phase !== 'betting' ? `<div style="margin-top:6px;color:var(--text-secondary);font-size:13px;">${pv.total}${pv.isSoft ? ' (soft)' : ''}</div>` : ''}
+        <div style="color:var(--text-secondary);font-size:13px;font-weight:600;margin-top:8px;">You</div>
+      </div>
+
+      ${bj.phase === 'betting' ? `
+        <div class="card" style="padding:18px;text-align:center;">
+          <div style="font-weight:700;margin-bottom:12px;">Bet: ${bj.bet} chips</div>
+          <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:14px;">
+            ${[25,100,250,500].map(a => `<button class="btn btn-secondary btn-sm" data-bet-add="${a}" ${a > (state.chips ?? 0) ? 'disabled' : ''}>+${a}</button>`).join('')}
+            <button class="btn btn-secondary btn-sm" id="bj-bet-max">Max</button>
+          </div>
+          <button class="btn btn-primary btn-block" id="bj-deal" ${(state.chips ?? 0) === 0 || bj.bet === 0 || bj.bet > (state.chips ?? 0) ? 'disabled' : ''}>Deal</button>
+          ${(state.chips ?? 0) === 0 ? `<button class="btn btn-ghost btn-sm" id="bj-get-chips" style="margin-top:10px;">Get More Chips</button>` : ''}
+        </div>
+      ` : bj.phase === 'playerTurn' ? `
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+          <button class="btn btn-secondary" id="bj-hit">Hit</button>
+          <button class="btn btn-secondary" id="bj-stand">Stand</button>
+          <button class="btn btn-secondary" id="bj-double" ${bj.playerCards.length !== 2 || bj.bet > (state.chips ?? 0) ? 'disabled' : ''}>Double Down</button>
+        </div>
+      ` : `
+        <div class="card" style="padding:18px;text-align:center;">
+          <div style="font-weight:700;margin-bottom:6px;">${bj.outcome.message}</div>
+          <div style="color:${bj.outcome.delta >= 0 ? 'var(--green)' : 'var(--red)'};margin-bottom:14px;">${bj.outcome.delta >= 0 ? '+' : ''}${bj.outcome.delta} chips</div>
+          <button class="btn btn-primary btn-block" id="bj-new-round">New Round</button>
+        </div>
+      `}
+    </div>
+  `;
+}
+function attachBlackjackHandlers() {
+  const bj = state.blackjack;
+  document.getElementById('bj-done')?.addEventListener('click', () => {
+    state.screen = 'home';
+    state.blackjack = null;
+    render();
+  });
+  document.querySelectorAll('[data-bet-add]').forEach(el => el.addEventListener('click', () => {
+    const add = parseInt(el.dataset.betAdd, 10);
+    bj.bet = Math.min((state.chips ?? 0), bj.bet + add);
+    render();
+  }));
+  document.getElementById('bj-bet-max')?.addEventListener('click', () => { bj.bet = state.chips ?? 0; render(); });
+  document.getElementById('bj-get-chips')?.addEventListener('click', resetChips);
+  document.getElementById('bj-deal')?.addEventListener('click', () => { bjDeal(bj); render(); });
+  document.getElementById('bj-hit')?.addEventListener('click', () => { bjHit(bj); render(); });
+  document.getElementById('bj-stand')?.addEventListener('click', () => { bjStand(bj); render(); });
+  document.getElementById('bj-double')?.addEventListener('click', () => { bjDoubleDown(bj); render(); });
+  document.getElementById('bj-new-round')?.addEventListener('click', async () => {
+    const delta = bj.outcome.delta;
+    await applyChipDelta(delta);
+    state.blackjack = newBlackjackState();
+    render();
+  });
+}
+</script>
+</body>
+</html>

@@ -183,6 +183,8 @@
   .seat-row + .seat-row { border-top: 1px solid rgba(239,228,198,0.08); }
   .seat-row.my-turn { background: var(--gold-dim); box-shadow: inset 0 0 0 1px rgba(206,160,63,0.4); }
   .seat-row.folded { opacity: 0.4; }
+  .bj-timer-track { height: 3px; border-radius: 2px; background: rgba(0,0,0,0.35); overflow: hidden; margin-top: 5px; max-width: 140px; }
+  .bj-timer-fill { height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-bright)); transition: width 1s linear; }
 
   /* -------------------------------------------------------------------
      Poker — oval table layout: seats ringed around a felt ellipse,
@@ -319,6 +321,11 @@ const state = {
     table: null,                 // live blackjackTables/main doc
     lastAppliedHandNumber: null, // guards against applying the same hand's payout twice
     lastError: null,             // surfaced in the UI instead of failing silently
+    // Same "don't replay on every re-render" bookkeeping as Poker's.
+    lastSoundHandNumber: null,
+    lastSoundWasMyTurn: false,
+    lastSoundResultHandNumber: null,
+    lastTickSecond: null,
   },
   poker: {
     table: null,              // live pokerTables/main doc
@@ -706,6 +713,7 @@ function handValue(cards) {
 // hands across 1-6 seats checking chip-delta correctness.
 // ============================================================================
 const BJ_TABLE_ID = 'main';
+const BJ_TURN_LIMIT_MS = 15000; // 15s per turn, same as Poker — see bjTurnTimerTick below
 
 let unsubBjTable = null;
 // Kept only in memory by whichever client is currently running a hand.
@@ -714,6 +722,10 @@ let lastProcessedBjActionId = null;
 
 function enterBlackjackScreen() {
   state.bj.lastError = null;
+  state.bj.lastSoundHandNumber = null;
+  state.bj.lastSoundWasMyTurn = false;
+  state.bj.lastSoundResultHandNumber = null;
+  state.bj.lastTickSecond = null;
   unsubBjTable = db.collection('blackjackTables').doc(BJ_TABLE_ID).onSnapshot(snap => {
     state.bj.table = snap.exists ? snap.data() : { seats: Array(6).fill(null), handNumber: 0, hand: null, requestedAction: null };
     // These two run whatever logic this client owes the table (running a
@@ -749,6 +761,70 @@ function myBjSeatIndex() {
   const t = state.bj.table;
   if (!t || !state.user) return -1;
   return t.seats.findIndex(s => s && s.authUID === state.user.uid);
+}
+
+// Same two-part timeout as Poker's pokerTurnTimerTick: a courtesy
+// self-timeout (snappy for the person actually timed out) plus a runner-side
+// backstop (so a stalled/closed tab can't freeze the table for everyone
+// else). Blackjack has no "check" equivalent, so the timeout action is
+// always Stand — the safe, no-further-risk default.
+function bjTurnTimerTick() {
+  if (state.screen !== 'blackjack') return;
+  const table = state.bj.table;
+  const hand = table && table.hand;
+  if (!hand || hand.phase !== 'playerTurns' || hand.currentTurnSeat == null || !hand.turnStartedAt) return;
+  const overdue = Date.now() - hand.turnStartedAt >= BJ_TURN_LIMIT_MS;
+  if (overdue) {
+    const mySeat = myBjSeatIndex();
+    if (hand.currentTurnSeat === mySeat) bjtSendAction('stand');
+  }
+  if (overdue && myBjRunningHand && myBjRunningHand.phase === 'playerTurns' && myBjRunningHand.handNumber === hand.handNumber) {
+    const seat = myBjRunningHand.currentTurnSeat;
+    if (seat != null && myBjRunningHand.perSeat[seat] && !myBjRunningHand.perSeat[seat].done
+        && myBjRunningHand.turnStartedAt && Date.now() - myBjRunningHand.turnStartedAt >= BJ_TURN_LIMIT_MS) {
+      try {
+        bjtApplyAction(myBjRunningHand, seat, 'stand');
+        db.collection('blackjackTables').doc(BJ_TABLE_ID).update({
+          hand: bjtHandForFirestore(myBjRunningHand), requestedAction: null,
+        }).catch(e => console.error('blackjack timeout write failed', e));
+      } catch (e) { console.error('blackjack timeout apply failed', e); }
+    }
+  }
+  render();
+}
+setInterval(bjTurnTimerTick, 1000);
+
+// Same "don't replay a sound or animation on every timer-driven re-render"
+// pattern as pokerUpdateSoundsAndAnim — called once per render.
+function bjUpdateSounds(table, hand, mySeat) {
+  if (!hand) { state.bj.lastSoundWasMyTurn = false; state.bj.lastTickSecond = null; return; }
+
+  if (state.bj.lastSoundHandNumber !== hand.handNumber) {
+    if (state.bj.lastSoundHandNumber !== null) {
+      const flicks = Math.min(8, (hand.participantSeats.length + 1) * 2);
+      for (let i = 0; i < flicks; i++) Sound.cardFlick(i * 0.06);
+    }
+    state.bj.lastSoundHandNumber = hand.handNumber;
+  }
+
+  const isMyTurnNow = hand.phase === 'playerTurns' && hand.currentTurnSeat === mySeat;
+  if (isMyTurnNow && !state.bj.lastSoundWasMyTurn) Sound.myTurn();
+  state.bj.lastSoundWasMyTurn = isMyTurnNow;
+  if (isMyTurnNow && hand.turnStartedAt) {
+    const secondsLeft = Math.ceil(Math.max(0, BJ_TURN_LIMIT_MS - (Date.now() - hand.turnStartedAt)) / 1000);
+    if (secondsLeft <= 5 && secondsLeft >= 1 && state.bj.lastTickSecond !== secondsLeft) {
+      Sound.tick();
+      state.bj.lastTickSecond = secondsLeft;
+    }
+  } else {
+    state.bj.lastTickSecond = null;
+  }
+
+  if (hand.phase === 'complete' && hand.result && state.bj.lastSoundResultHandNumber !== hand.handNumber) {
+    const anyWin = Object.values(hand.result.deltas).some(d => d > 0);
+    if (anyWin) Sound.win();
+    state.bj.lastSoundResultHandNumber = hand.handNumber;
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -804,6 +880,7 @@ function bjtStartHand(table, handNumber) {
     return hand;
   }
   hand.currentTurnSeat = remaining[0];
+  hand.turnStartedAt = Date.now();
   return hand;
 }
 function bjtLegalActions(hand, seat) {
@@ -819,7 +896,7 @@ function bjtAdvanceTurn(hand) {
   const idx = hand.participantSeats.indexOf(hand.currentTurnSeat);
   for (let step = 1; step <= hand.participantSeats.length; step++) {
     const candidate = hand.participantSeats[(idx + step) % hand.participantSeats.length];
-    if (!hand.perSeat[candidate].done) { hand.currentTurnSeat = candidate; return; }
+    if (!hand.perSeat[candidate].done) { hand.currentTurnSeat = candidate; hand.turnStartedAt = Date.now(); return; }
   }
   hand.currentTurnSeat = null;
   bjtFinishHand(hand);
@@ -1053,6 +1130,7 @@ async function bjtSendAction(type) {
     const table = state.bj.table;
     const mySeat = myBjSeatIndex();
     if (!table || !table.hand || table.hand.currentTurnSeat !== mySeat) return;
+    if (type === 'stand') Sound.fold(); else { Sound.chip(); Sound.cardFlick(0.05); }
     await db.collection('blackjackTables').doc(BJ_TABLE_ID).update({
       requestedAction: { authUID: state.user.uid, seat: mySeat, type, handNumber: table.hand.handNumber, actionId: Math.random().toString(36).slice(2) },
     });
@@ -1105,6 +1183,13 @@ function renderBjSeatRow(table, hand, seatIndex, mySeat) {
   const outcomeColor = !outcomeLabel ? 'var(--text-secondary)' : goldOutcomes.includes(p.outcome) ? 'var(--gold-bright)' : p.outcome === 'push' ? 'var(--text-secondary)' : 'var(--red-bright)';
   const lostLook = p && ['bust', 'lose', 'dealerBlackjack'].includes(p.outcome);
 
+  let timerHtml = '';
+  if (isMyTurn && hand.turnStartedAt) {
+    const remain = Math.max(0, BJ_TURN_LIMIT_MS - (Date.now() - hand.turnStartedAt));
+    const pct = Math.round((remain / BJ_TURN_LIMIT_MS) * 100);
+    timerHtml = `<div class="bj-timer-track"><div class="bj-timer-fill" style="width:${pct}%"></div></div>`;
+  }
+
   return `
     <div class="seat-row${isMyTurn ? ' my-turn' : ''}${lostLook ? ' folded' : ''}">
       ${avatarHtml(seat.name, seat.photoURL, 36)}
@@ -1124,6 +1209,7 @@ function renderBjSeatRow(table, hand, seatIndex, mySeat) {
             <span class="chip-icon" style="width:12px;height:12px;"></span>Bet ${p ? p.bet : (seat.bet || 0)}
           </div>
         `}
+        ${timerHtml}
       </div>
       ${p ? `
         <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
@@ -1148,11 +1234,15 @@ function renderBlackjackScreen() {
   const dealerDone = hand && hand.phase === 'complete';
   const dv = hand ? handValue(hand.dealerCards) : null;
   const myLegal = hand ? bjtLegalActions(hand, mySeat) : null;
+  bjUpdateSounds(table, hand, mySeat);
 
   return `
     <div class="topbar">
       <h1 class="page-title">Blackjack</h1>
-      <button class="btn btn-ghost btn-sm" id="bj-done">Done</button>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button class="sound-toggle" id="bj-sound-toggle" title="${Sound.enabled ? 'Mute sound' : 'Unmute sound'}">${Sound.enabled ? '🔊' : '🔇'}</button>
+        <button class="btn btn-ghost btn-sm" id="bj-done">Done</button>
+      </div>
     </div>
     <div class="content">
       ${state.bj.lastError ? `
@@ -1203,6 +1293,10 @@ function renderBlackjackScreen() {
   `;
 }
 function attachBlackjackHandlers() {
+  document.getElementById('bj-sound-toggle')?.addEventListener('click', () => {
+    Sound.setEnabled(!Sound.enabled);
+    render();
+  });
   document.getElementById('bj-dismiss-error')?.addEventListener('click', () => {
     state.bj.lastError = null;
     render();
@@ -1252,7 +1346,7 @@ function attachBlackjackHandlers() {
 const POKER_TABLE_ID = 'main';
 const POKER_SMALL_BLIND = 10;
 const POKER_BIG_BLIND = 20;
-const POKER_TURN_LIMIT_MS = 30000; // 30s per turn — see pokerSeatStyle/checkPokerTurnTimeout below
+const POKER_TURN_LIMIT_MS = 15000; // 15s per turn — see pokerTurnTimerTick below
 const POKER_RANK_ORDER = { '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,'J':11,'Q':12,'K':13,'A':14 };
 const POKER_HAND_NAMES = ['High Card','Pair','Two Pair','Three of a Kind','Straight','Flush','Full House','Four of a Kind','Straight Flush'];
 

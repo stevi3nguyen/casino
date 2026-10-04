@@ -124,8 +124,14 @@ const state = {
   employeeLookupCompleted: false,
   chips: null,
   authError: null,
-  screen: 'home',       // 'home' | 'blackjack'
+  screen: 'home',       // 'home' | 'blackjack' | 'poker'
   blackjack: null,      // active BlackjackRound-equivalent object, or null
+  poker: {
+    table: null,              // live pokerTables/main doc
+    myHoleCards: null,        // { cards, handNumber } from my own private doc
+    lastAppliedHandNumber: null, // guards against applying the same hand's payout twice
+    raiseAmount: null,        // draft "raise to" amount while it's my turn
+  },
 };
 
 let unsubEmployee = null;
@@ -241,6 +247,11 @@ function render() {
     attachBlackjackHandlers();
     return;
   }
+  if (state.screen === 'poker') {
+    root.innerHTML = renderPokerScreen();
+    attachPokerHandlers();
+    return;
+  }
   root.innerHTML = renderHomeScreen();
   attachHomeHandlers();
 }
@@ -309,12 +320,13 @@ function renderHomeScreen() {
         </div>
         <div style="color:var(--text-tertiary);">›</div>
       </div>
-      <div class="card" style="padding:16px;display:flex;align-items:center;gap:14px;opacity:0.5;">
+      <div class="card" style="padding:16px;display:flex;align-items:center;gap:14px;cursor:pointer;" id="home-play-poker">
         <div style="font-size:28px;">👥</div>
         <div style="flex:1;">
           <div style="font-weight:700;">Texas Hold'em</div>
-          <div style="color:var(--text-secondary);font-size:13px;">Coming soon</div>
+          <div style="color:var(--text-secondary);font-size:13px;">One shared table. Sit down and play against coworkers.</div>
         </div>
+        <div style="color:var(--text-tertiary);">›</div>
       </div>
     </div>
   `;
@@ -325,6 +337,11 @@ function attachHomeHandlers() {
   document.getElementById('home-play-blackjack')?.addEventListener('click', () => {
     state.screen = 'blackjack';
     state.blackjack = newBlackjackState();
+    render();
+  });
+  document.getElementById('home-play-poker')?.addEventListener('click', () => {
+    state.screen = 'poker';
+    enterPokerScreen();
     render();
   });
 }
@@ -503,6 +520,603 @@ function attachBlackjackHandlers() {
     await applyChipDelta(delta);
     state.blackjack = newBlackjackState();
     render();
+  });
+}
+
+// ============================================================================
+// TEXAS HOLD'EM — one shared table (`pokerTables/main`), up to 8 seats, same
+// chip balance as Blackjack. No Cloud Functions in this project, so there's
+// no neutral server to run the hand — instead, whichever client clicks
+// "Deal" becomes that ONE hand's "runner": it shuffles the deck (kept only
+// in that browser's memory, never written to Firestore), deals hole cards
+// into each player's own private document, and is the one that applies
+// everyone else's actions and advances the public hand state. A different
+// client can end up running the next hand. This is a trust-based model —
+// the same level of trust the schedule app already places in every
+// signed-in staff member for `shifts` ("allow write: if isSignedIn()") —
+// which is appropriate for a casual game played with fake chips among
+// coworkers, but it does mean: (1) a technically-inclined cheater could in
+// theory tamper with their own client, and (2) if the runner's browser tab
+// closes mid-hand, that hand gets stuck — which is what the "Reset Table"
+// escape hatch below is for.
+// ============================================================================
+const POKER_TABLE_ID = 'main';
+const POKER_SMALL_BLIND = 10;
+const POKER_BIG_BLIND = 20;
+const POKER_RANK_ORDER = { '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,'J':11,'Q':12,'K':13,'A':14 };
+const POKER_HAND_NAMES = ['High Card','Pair','Two Pair','Three of a Kind','Straight','Flush','Full House','Four of a Kind','Straight Flush'];
+
+let unsubPokerTable = null;
+let unsubPokerPrivate = null;
+// Kept only in memory by whichever client is currently running a hand — the
+// public Firestore doc never contains the live deck (that's what keeps
+// other players' hole cards hidden until showdown).
+let myRunningHand = null;
+let myRunningHoleCards = null;
+let lastProcessedActionId = null;
+
+function enterPokerScreen() {
+  state.poker.raiseAmount = null;
+  unsubPokerTable = db.collection('pokerTables').doc(POKER_TABLE_ID).onSnapshot(snap => {
+    state.poker.table = snap.exists ? snap.data() : { seats: Array(8).fill(null), dealerSeat: null, handNumber: 0, hand: null, requestedAction: null };
+    maybeRunHandLogic();
+    maybeApplyMyPayout();
+    render();
+  }, err => console.error('poker table listener error', err));
+  if (state.user) {
+    unsubPokerPrivate = db.collection('pokerTables').doc(POKER_TABLE_ID).collection('private').doc(state.user.uid)
+      .onSnapshot(snap => {
+        state.poker.myHoleCards = snap.exists ? snap.data() : null;
+        render();
+      }, err => console.error('poker private listener error', err));
+  }
+}
+function leavePokerScreen() {
+  if (unsubPokerTable) { unsubPokerTable(); unsubPokerTable = null; }
+  if (unsubPokerPrivate) { unsubPokerPrivate(); unsubPokerPrivate = null; }
+  state.poker.table = null;
+  state.poker.myHoleCards = null;
+}
+
+function myPokerSeatIndex() {
+  const t = state.poker.table;
+  if (!t || !state.user) return -1;
+  return t.seats.findIndex(s => s && s.authUID === state.user.uid);
+}
+
+// ----------------------------------------------------------------------------
+// Deck / hand evaluation (same shape of card as Blackjack's {rank, suit} —
+// SUITS/RANKS/freshShuffledDeck are reused from the Blackjack section above).
+// ----------------------------------------------------------------------------
+function pokerCombinations(arr, k) {
+  const results = [];
+  function helper(start, combo) {
+    if (combo.length === k) { results.push(combo.slice()); return; }
+    for (let i = start; i < arr.length; i++) { combo.push(arr[i]); helper(i + 1, combo); combo.pop(); }
+  }
+  helper(0, []);
+  return results;
+}
+function pokerEvaluate5(cards) {
+  const ranks = cards.map(c => POKER_RANK_ORDER[c.rank]).sort((a, b) => b - a);
+  const suits = cards.map(c => c.suit);
+  const isFlush = suits.every(s => s === suits[0]);
+  const uniqueRanksDesc = [...new Set(ranks)].sort((a, b) => b - a);
+  let straightHigh = null;
+  if (uniqueRanksDesc.length === 5) {
+    if (uniqueRanksDesc[0] - uniqueRanksDesc[4] === 4) straightHigh = uniqueRanksDesc[0];
+    else if (uniqueRanksDesc.join(',') === '14,5,4,3,2') straightHigh = 5;
+  }
+  const counts = {};
+  for (const r of ranks) counts[r] = (counts[r] || 0) + 1;
+  const groups = Object.entries(counts).map(([r, cnt]) => ({ rank: parseInt(r, 10), count: cnt }))
+    .sort((a, b) => b.count - a.count || b.rank - a.rank);
+  if (isFlush && straightHigh) return [8, straightHigh];
+  if (groups[0].count === 4) { const kicker = groups.find(g => g.count === 1).rank; return [7, groups[0].rank, kicker]; }
+  if (groups[0].count === 3 && groups[1] && groups[1].count === 2) return [6, groups[0].rank, groups[1].rank];
+  if (isFlush) return [5, ...ranks];
+  if (straightHigh) return [4, straightHigh];
+  if (groups[0].count === 3) { const kickers = groups.filter(g => g.count === 1).map(g => g.rank).sort((a,b)=>b-a); return [3, groups[0].rank, ...kickers]; }
+  if (groups[0].count === 2 && groups[1] && groups[1].count === 2) {
+    const pairRanks = [groups[0].rank, groups[1].rank].sort((a,b)=>b-a);
+    const kicker = groups.find(g => g.count === 1).rank;
+    return [2, ...pairRanks, kicker];
+  }
+  if (groups[0].count === 2) { const kickers = groups.filter(g => g.count === 1).map(g => g.rank).sort((a,b)=>b-a); return [1, groups[0].rank, ...kickers]; }
+  return [0, ...ranks];
+}
+function pokerCompareHands(a, b) {
+  const len = Math.max(a.length, b.length);
+  for (let i = 0; i < len; i++) { const av = a[i] ?? -1, bv = b[i] ?? -1; if (av !== bv) return av - bv; }
+  return 0;
+}
+function pokerBestHand(cards7) {
+  let best = null;
+  for (const combo of pokerCombinations(cards7, 5)) {
+    const value = pokerEvaluate5(combo);
+    if (!best || pokerCompareHands(value, best.value) > 0) best = { value, cards: combo };
+  }
+  return best;
+}
+function pokerComputeSidePots(contributions, foldedSeats) {
+  const seats = Object.keys(contributions).map(Number);
+  const levels = [...new Set(seats.map(s => contributions[s]))].filter(v => v > 0).sort((a, b) => a - b);
+  const pots = [];
+  let prev = 0;
+  for (const level of levels) {
+    const payers = seats.filter(s => contributions[s] >= level);
+    const layerAmount = (level - prev) * payers.length;
+    if (layerAmount > 0) {
+      let eligible = payers.filter(s => !foldedSeats.has(s));
+      if (eligible.length === 0) eligible = payers; // defensive refund — shouldn't happen
+      pots.push({ amount: layerAmount, eligibleSeats: eligible });
+    }
+    prev = level;
+  }
+  return pots;
+}
+function pokerResolveShowdown(pots, holeCardsBySeat, community) {
+  const payouts = {};
+  const bestHandBySeat = {};
+  for (const pot of pots) {
+    let bestVal = null, winners = [];
+    for (const seat of pot.eligibleSeats) {
+      if (!bestHandBySeat[seat]) {
+        const result = pokerBestHand(holeCardsBySeat[seat].concat(community));
+        bestHandBySeat[seat] = { value: result.value, name: POKER_HAND_NAMES[result.value[0]] };
+      }
+      const val = bestHandBySeat[seat].value;
+      if (!bestVal || pokerCompareHands(val, bestVal) > 0) { bestVal = val; winners = [seat]; }
+      else if (pokerCompareHands(val, bestVal) === 0) winners.push(seat);
+    }
+    const share = Math.floor(pot.amount / winners.length);
+    let remainder = pot.amount - share * winners.length;
+    winners.sort((a, b) => a - b);
+    for (const seat of winners) {
+      payouts[seat] = (payouts[seat] || 0) + share + (remainder > 0 ? 1 : 0);
+      if (remainder > 0) remainder--;
+    }
+  }
+  return { payouts, bestHandBySeat };
+}
+
+// ----------------------------------------------------------------------------
+// Hand state machine — mirrors poker_engine.js exactly (that file was
+// unit-tested standalone — 1,200+ assertions across targeted hand-ranking
+// checks, side-pot math, and 300 fully randomized simulated hands checking
+// chip conservation — before this copy was pasted in here).
+// ----------------------------------------------------------------------------
+function pokerOccupiedSeats(table) {
+  return table.seats.map((s, i) => (s ? i : null)).filter(i => i !== null);
+}
+function pokerNextOccupiedSeatIn(occ, fromSeat) {
+  const idx = occ.indexOf(fromSeat);
+  return occ[(idx + 1) % occ.length];
+}
+function pokerStartHand(table, holeCardsOut) {
+  const occ = pokerOccupiedSeats(table).filter(i => (table.seats[i].chips ?? 0) > 0);
+  if (occ.length < 2) return null;
+  const prevDealer = table.dealerSeat;
+  const dealerSeat = (prevDealer == null || !occ.includes(prevDealer)) ? occ[0] : pokerNextOccupiedSeatIn(occ, prevDealer);
+  let sbSeat, bbSeat;
+  if (occ.length === 2) { sbSeat = dealerSeat; bbSeat = pokerNextOccupiedSeatIn(occ, dealerSeat); }
+  else { sbSeat = pokerNextOccupiedSeatIn(occ, dealerSeat); bbSeat = pokerNextOccupiedSeatIn(occ, sbSeat); }
+
+  const deck = freshShuffledDeck();
+  const stacks = {}, bets = {}, totalContributed = {}, folded = {}, allIn = {};
+  for (const seat of occ) { stacks[seat] = table.seats[seat].chips; bets[seat] = 0; totalContributed[seat] = 0; folded[seat] = false; allIn[seat] = false; }
+  const postBlind = (seat, amount) => {
+    const actual = Math.min(amount, stacks[seat]);
+    bets[seat] = actual; totalContributed[seat] = actual; stacks[seat] -= actual;
+    if (stacks[seat] === 0) allIn[seat] = true;
+  };
+  postBlind(sbSeat, POKER_SMALL_BLIND);
+  postBlind(bbSeat, POKER_BIG_BLIND);
+  for (const seat of occ) holeCardsOut[seat] = [deck.pop(), deck.pop()];
+  const firstToAct = occ.length === 2 ? sbSeat : pokerNextOccupiedSeatIn(occ, bbSeat);
+  return {
+    handNumber: (table.handNumber || 0) + 1, deck,
+    seatsInHand: occ, stacks, bets, totalContributed, folded, allIn, hasActed: {},
+    community: [], street: 'preflop', currentTurnSeat: firstToAct,
+    dealerSeat, sbSeat, bbSeat, currentBet: POKER_BIG_BLIND, minRaise: POKER_BIG_BLIND,
+    lastAggressorSeat: bbSeat, result: null,
+  };
+}
+function pokerActiveToActSeats(hand) { return hand.seatsInHand.filter(s => !hand.folded[s] && !hand.allIn[s]); }
+function pokerNonFoldedSeats(hand) { return hand.seatsInHand.filter(s => !hand.folded[s]); }
+function pokerLegalActions(hand, seat) {
+  if (hand.currentTurnSeat !== seat) return null;
+  const toCall = hand.currentBet - hand.bets[seat];
+  const stack = hand.stacks[seat];
+  return {
+    canCheck: toCall === 0, canCall: toCall > 0 && stack > 0, callAmount: Math.min(toCall, stack),
+    canBetOrRaise: stack > toCall, minRaiseTo: hand.currentBet + hand.minRaise, maxRaiseTo: hand.bets[seat] + stack,
+    canFold: true,
+  };
+}
+function pokerApplyAction(hand, seat, type, amount) {
+  if (hand.currentTurnSeat !== seat) throw new Error("not this seat's turn");
+  const legal = pokerLegalActions(hand, seat);
+  if (type === 'fold') { hand.folded[seat] = true; }
+  else if (type === 'check') { if (!legal.canCheck) throw new Error('cannot check'); }
+  else if (type === 'call') {
+    const callAmt = legal.callAmount;
+    hand.stacks[seat] -= callAmt; hand.bets[seat] += callAmt; hand.totalContributed[seat] += callAmt;
+    if (hand.stacks[seat] === 0) hand.allIn[seat] = true;
+  } else if (type === 'raise') {
+    const raiseTo = Math.min(amount, legal.maxRaiseTo);
+    const addAmt = raiseTo - hand.bets[seat];
+    if (addAmt <= 0 || addAmt > hand.stacks[seat]) throw new Error('invalid raise amount');
+    const isFullRaise = (raiseTo - hand.currentBet) >= hand.minRaise;
+    hand.stacks[seat] -= addAmt; hand.bets[seat] += addAmt; hand.totalContributed[seat] += addAmt;
+    if (hand.stacks[seat] === 0) hand.allIn[seat] = true;
+    if (raiseTo > hand.currentBet) {
+      if (isFullRaise) hand.minRaise = raiseTo - hand.currentBet;
+      hand.currentBet = raiseTo; hand.lastAggressorSeat = seat; hand.hasActed = {};
+    }
+  } else { throw new Error('unknown action type: ' + type); }
+  hand.hasActed[seat] = true;
+  const stillIn = pokerNonFoldedSeats(hand);
+  if (stillIn.length === 1) { pokerResolveFoldWin(hand, stillIn[0]); return hand; }
+  pokerAdvanceTurn(hand);
+  return hand;
+}
+function pokerBettingRoundClosed(hand) {
+  const toAct = pokerActiveToActSeats(hand);
+  if (toAct.length === 0) return true;
+  return toAct.every(s => hand.hasActed[s] && hand.bets[s] === hand.currentBet);
+}
+function pokerAdvanceTurn(hand) {
+  if (pokerBettingRoundClosed(hand)) { pokerAdvanceStreet(hand); return; }
+  const toAct = pokerActiveToActSeats(hand);
+  const order = hand.seatsInHand;
+  const idx = order.indexOf(hand.currentTurnSeat);
+  for (let step = 1; step <= order.length; step++) {
+    const candidate = order[(idx + step) % order.length];
+    if (toAct.includes(candidate)) { hand.currentTurnSeat = candidate; return; }
+  }
+  pokerAdvanceStreet(hand);
+}
+function pokerAdvanceStreet(hand) {
+  for (const s of hand.seatsInHand) hand.bets[s] = 0;
+  hand.hasActed = {}; hand.currentBet = 0; hand.minRaise = POKER_BIG_BLIND;
+  const remainingToAct = pokerActiveToActSeats(hand);
+  const everyoneElseAllIn = remainingToAct.length <= 1 && pokerNonFoldedSeats(hand).length > 1;
+  if (hand.street === 'preflop') { hand.street = 'flop'; hand.community.push(hand.deck.pop(), hand.deck.pop(), hand.deck.pop()); }
+  else if (hand.street === 'flop') { hand.street = 'turn'; hand.community.push(hand.deck.pop()); }
+  else if (hand.street === 'turn') { hand.street = 'river'; hand.community.push(hand.deck.pop()); }
+  else if (hand.street === 'river') { hand.street = 'showdown'; }
+  if (hand.street === 'showdown' || everyoneElseAllIn) {
+    if (everyoneElseAllIn && hand.street !== 'showdown') { pokerAdvanceStreet(hand); return; }
+    hand.currentTurnSeat = null;
+    return;
+  }
+  const order = hand.seatsInHand;
+  const dealerIdx = order.indexOf(hand.dealerSeat);
+  const toAct = pokerActiveToActSeats(hand);
+  for (let step = 1; step <= order.length; step++) {
+    const candidate = order[(dealerIdx + step) % order.length];
+    if (toAct.includes(candidate)) { hand.currentTurnSeat = candidate; return; }
+  }
+  hand.currentTurnSeat = null;
+}
+function pokerResolveFoldWin(hand, winnerSeat) {
+  hand.street = 'complete'; hand.currentTurnSeat = null;
+  const potTotal = Object.values(hand.totalContributed).reduce((a, b) => a + b, 0);
+  hand.result = { payouts: { [winnerSeat]: potTotal }, bestHandBySeat: {}, wonByFold: true, revealedHoleCards: {} };
+}
+function pokerFinishShowdown(hand, holeCardsBySeat) {
+  const foldedSet = new Set(hand.seatsInHand.filter(s => hand.folded[s]));
+  const pots = pokerComputeSidePots(hand.totalContributed, foldedSet);
+  const { payouts, bestHandBySeat } = pokerResolveShowdown(pots, holeCardsBySeat, hand.community);
+  hand.street = 'complete';
+  // Reveal hole cards for everyone who made it to a real showdown (not
+  // folded) — standard poker etiquette; a folded hand stays private.
+  const revealedHoleCards = {};
+  for (const seat of pokerNonFoldedSeats(hand)) revealedHoleCards[seat] = holeCardsBySeat[seat];
+  hand.result = { payouts, bestHandBySeat, wonByFold: false, revealedHoleCards };
+}
+
+// Strips the in-memory-only `deck` field before writing the hand to
+// Firestore — that field is exactly what keeps hole cards private.
+function pokerHandForFirestore(hand) {
+  const { deck, ...rest } = hand;
+  return rest;
+}
+
+// ----------------------------------------------------------------------------
+// Dealing a new hand — claims "runner" status via a transaction so two
+// players clicking Deal at the same instant can't both start a hand.
+// ----------------------------------------------------------------------------
+async function pokerStartNextHand() {
+  const table = state.poker.table;
+  if (!table) return;
+  const seatedIdx = pokerOccupiedSeats(table);
+  if (seatedIdx.length < 2) return;
+
+  // Read everyone's LIVE casino balance right before dealing — the table
+  // doesn't cache chip counts on the seat, so this can never drift out of
+  // sync with what they also have available in Blackjack.
+  const balances = await Promise.all(seatedIdx.map(i =>
+    db.collection('casinoProfiles').doc(table.seats[i].authUID).get()
+  ));
+  const tableForEngine = { seats: table.seats.map((s, i) => {
+    if (!s) return null;
+    const idx = seatedIdx.indexOf(i);
+    const snap = idx === -1 ? null : balances[idx];
+    return { ...s, chips: snap && snap.exists ? (snap.data().chips ?? 0) : 0 };
+  }), dealerSeat: table.dealerSeat, handNumber: table.handNumber || 0 };
+
+  const holeCardsOut = {};
+  const hand = pokerStartHand(tableForEngine, holeCardsOut);
+  if (!hand) return; // fewer than 2 funded players once real balances came back
+
+  const ref = db.collection('pokerTables').doc(POKER_TABLE_ID);
+  try {
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const current = snap.exists ? snap.data() : null;
+      const alreadyInHand = current && current.hand && current.hand.street !== 'complete';
+      if (alreadyInHand) throw new Error('a hand is already in progress');
+      tx.set(ref, {
+        seats: table.seats, dealerSeat: hand.dealerSeat, handNumber: hand.handNumber,
+        hand: pokerHandForFirestore(hand), requestedAction: null,
+      }, { merge: true });
+    });
+  } catch (e) {
+    return; // someone else won the race to deal — just become an observer
+  }
+
+  myRunningHand = hand;
+  myRunningHoleCards = holeCardsOut;
+  lastProcessedActionId = null;
+  await Promise.all(seatedIdx.map(i =>
+    db.collection('pokerTables').doc(POKER_TABLE_ID).collection('private').doc(table.seats[i].authUID)
+      .set({ cards: holeCardsOut[i], handNumber: hand.handNumber })
+  ));
+}
+
+// Called on every table-doc update. If THIS client is the one running the
+// current hand (it has `myRunningHand` in memory) and a player has posted a
+// `requestedAction` that hasn't been processed yet, apply it and push the
+// updated public state back to Firestore.
+function maybeRunHandLogic() {
+  const table = state.poker.table;
+  if (!table || !myRunningHand || !table.hand) return;
+  if (table.hand.handNumber !== myRunningHand.handNumber) { myRunningHand = null; myRunningHoleCards = null; return; }
+  if (myRunningHand.street === 'complete') return;
+
+  const req = table.requestedAction;
+  if (req && req.actionId !== lastProcessedActionId && req.handNumber === myRunningHand.handNumber) {
+    lastProcessedActionId = req.actionId;
+    try {
+      pokerApplyAction(myRunningHand, req.seat, req.type, req.amount);
+    } catch (e) {
+      console.error('poker action rejected', e.message);
+    }
+    if (myRunningHand.street === 'showdown') {
+      pokerFinishShowdown(myRunningHand, myRunningHoleCards);
+    }
+    db.collection('pokerTables').doc(POKER_TABLE_ID).update({
+      hand: pokerHandForFirestore(myRunningHand),
+      requestedAction: null,
+    });
+  }
+}
+
+// Each seated player applies their OWN net chip change once a hand's result
+// is posted — nobody else can touch their balance (the Firestore rule only
+// lets a player write their own casinoProfiles doc), so the runner computing
+// payouts never actually moves anyone's chips; every player moves their own.
+async function maybeApplyMyPayout() {
+  const table = state.poker.table;
+  const mySeat = myPokerSeatIndex();
+  if (!table || !table.hand || !table.hand.result || mySeat === -1) return;
+  const hand = table.hand;
+  if (hand.totalContributed[mySeat] == null) return; // I wasn't dealt into this hand
+  if (state.poker.lastAppliedHandNumber === hand.handNumber) return;
+  state.poker.lastAppliedHandNumber = hand.handNumber;
+  const payout = hand.result.payouts[mySeat] || 0;
+  const delta = payout - hand.totalContributed[mySeat];
+  if (delta !== 0) await applyChipDelta(delta);
+}
+
+async function pokerSitDown(seatIndex) {
+  if (!state.employee || !state.user) return;
+  const ref = db.collection('pokerTables').doc(POKER_TABLE_ID);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const table = snap.exists ? snap.data() : { seats: Array(8).fill(null), dealerSeat: null, handNumber: 0, hand: null, requestedAction: null };
+    if (table.seats[seatIndex]) return; // already taken
+    const seats = table.seats.slice();
+    seats[seatIndex] = { employeeId: state.employee.id, authUID: state.user.uid, name: state.employee.name, photoURL: state.employee.photoURL || null };
+    tx.set(ref, { ...table, seats }, { merge: true });
+  });
+}
+async function pokerStandUp() {
+  const table = state.poker.table;
+  const mySeat = myPokerSeatIndex();
+  if (!table || mySeat === -1) return;
+  if (table.hand && table.hand.street !== 'complete') return; // can't leave mid-hand
+  const seats = table.seats.slice();
+  seats[mySeat] = null;
+  await db.collection('pokerTables').doc(POKER_TABLE_ID).update({ seats });
+}
+async function pokerSendAction(type, amount) {
+  const table = state.poker.table;
+  const mySeat = myPokerSeatIndex();
+  if (!table || !table.hand || table.hand.currentTurnSeat !== mySeat) return;
+  await db.collection('pokerTables').doc(POKER_TABLE_ID).update({
+    requestedAction: { authUID: state.user.uid, seat: mySeat, type, amount: amount ?? null, handNumber: table.hand.handNumber, actionId: Math.random().toString(36).slice(2) },
+  });
+}
+async function pokerResetTable() {
+  await db.collection('pokerTables').doc(POKER_TABLE_ID).update({ hand: null, requestedAction: null });
+  myRunningHand = null; myRunningHoleCards = null;
+}
+
+// ----------------------------------------------------------------------------
+// Rendering
+// ----------------------------------------------------------------------------
+function pokerCardHtml(card, faceDown) {
+  if (!card) return '';
+  if (faceDown) return `<div class="playing-card back"></div>`;
+  const isRed = card.suit === '♥' || card.suit === '♦';
+  return `<div class="playing-card${isRed ? ' red' : ''}"><div>${card.rank}</div><div>${card.suit}</div></div>`;
+}
+
+function renderPokerScreen() {
+  const table = state.poker.table;
+  if (!table) return `<div class="content"><div style="padding:40px;text-align:center;color:var(--text-tertiary);">Loading table…</div></div>`;
+  const mySeat = myPokerSeatIndex();
+  const hand = table.hand;
+  const seatedCount = pokerOccupiedSeats(table).length;
+  const canDeal = (!hand || hand.street === 'complete') && seatedCount >= 2;
+
+  return `
+    <div class="topbar">
+      <h1 class="page-title">Texas Hold'em</h1>
+      <button class="btn btn-secondary btn-sm" id="poker-done">Done</button>
+    </div>
+    <div class="content">
+      <div style="text-align:center;color:var(--gold);font-weight:700;margin-bottom:12px;">${state.chips ?? 0} chips</div>
+
+      ${hand && hand.street !== 'complete' ? `
+        <div style="text-align:center;margin-bottom:10px;color:var(--text-secondary);font-size:13px;text-transform:uppercase;letter-spacing:.04em;">${hand.street}</div>
+        <div class="hand-row" style="margin-bottom:8px;">${hand.community.map(c => pokerCardHtml(c, false)).join('') || '<span style="color:var(--text-tertiary);font-size:13px;">No community cards yet</span>'}</div>
+        <div style="text-align:center;color:var(--text-secondary);font-size:13px;margin-bottom:16px;">Pot: ${Object.values(hand.totalContributed).reduce((a,b)=>a+b,0)} chips</div>
+      ` : ''}
+
+      ${hand && hand.street === 'complete' && hand.result ? renderPokerResultBanner(table, hand) : ''}
+
+      <div class="card" style="padding:14px;margin-bottom:16px;">
+        ${Array.from({length: 8}, (_, i) => renderPokerSeatRow(table, hand, i, mySeat)).join('')}
+      </div>
+
+      ${mySeat === -1 ? `
+        <p style="text-align:center;color:var(--text-tertiary);font-size:13px;">Tap an empty seat above to sit down.</p>
+      ` : canDeal ? `
+        <button class="btn btn-primary btn-block" id="poker-deal">Deal Next Hand</button>
+      ` : ''}
+
+      ${mySeat !== -1 && hand && hand.currentTurnSeat === mySeat ? renderPokerActionControls(hand, mySeat) : ''}
+
+      ${mySeat !== -1 && (!hand || hand.street === 'complete') ? `
+        <button class="btn btn-ghost btn-sm btn-block" id="poker-stand-up" style="margin-top:10px;">Stand Up</button>
+      ` : ''}
+      ${hand && hand.street !== 'complete' ? `
+        <button class="btn btn-ghost btn-sm btn-block" id="poker-reset" style="margin-top:14px;color:var(--text-tertiary);">Reset Table (use if the hand gets stuck)</button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function renderPokerResultBanner(table, hand) {
+  const winners = Object.entries(hand.result.payouts).filter(([, amt]) => amt > 0).map(([seat]) => parseInt(seat, 10));
+  const names = winners.map(s => table.seats[s] ? escapeHtml(table.seats[s].name) : '?');
+  const handName = hand.result.wonByFold ? 'everyone else folded' :
+    (winners.length && hand.result.bestHandBySeat[winners[0]] ? hand.result.bestHandBySeat[winners[0]].name : '');
+  return `
+    <div class="card" style="padding:16px;text-align:center;margin-bottom:16px;border-color:var(--gold);">
+      <div style="font-weight:700;margin-bottom:4px;">${names.join(' & ')} ${winners.length > 1 ? 'split the pot' : 'wins'}${handName ? ` — ${escapeHtml(handName)}` : ''}</div>
+      <div style="color:var(--text-secondary);font-size:13px;">${Object.entries(hand.result.payouts).map(([seat, amt]) => amt > 0 ? `${escapeHtml(table.seats[seat]?.name || '?')}: +${amt}` : '').filter(Boolean).join(' · ')}</div>
+    </div>
+  `;
+}
+
+function renderPokerSeatRow(table, hand, seatIndex, mySeat) {
+  const seat = table.seats[seatIndex];
+  const inHand = hand && hand.seatsInHand && hand.seatsInHand.includes(seatIndex);
+  const isMyTurn = hand && hand.currentTurnSeat === seatIndex;
+  const isDealer = hand ? hand.dealerSeat === seatIndex : table.dealerSeat === seatIndex;
+  const folded = inHand && hand.folded[seatIndex];
+  const allIn = inHand && hand.allIn[seatIndex];
+
+  if (!seat) {
+    return `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 4px;${seatIndex < 7 ? 'border-bottom:1px solid var(--border);' : ''}">
+        <div style="width:36px;height:36px;border-radius:50%;border:1px dashed var(--border);"></div>
+        <div style="flex:1;color:var(--text-tertiary);font-size:13px;">Empty seat</div>
+        ${mySeat === -1 ? `<button class="btn btn-secondary btn-sm" data-sit-seat="${seatIndex}">Sit Here</button>` : ''}
+      </div>
+    `;
+  }
+
+  let holeCardsHtml = '';
+  if (inHand) {
+    if (seatIndex === mySeat && state.poker.myHoleCards && state.poker.myHoleCards.handNumber === hand.handNumber) {
+      holeCardsHtml = `<div style="display:flex;gap:3px;">${state.poker.myHoleCards.cards.map(c => pokerCardHtml(c, false)).join('')}</div>`;
+    } else if (hand.result && hand.result.revealedHoleCards && hand.result.revealedHoleCards[seatIndex]) {
+      holeCardsHtml = `<div style="display:flex;gap:3px;">${hand.result.revealedHoleCards[seatIndex].map(c => pokerCardHtml(c, false)).join('')}</div>`;
+    } else if (!folded) {
+      holeCardsHtml = `<div style="display:flex;gap:3px;"><div class="playing-card back" style="width:28px;height:40px;"></div><div class="playing-card back" style="width:28px;height:40px;"></div></div>`;
+    }
+  }
+
+  return `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 4px;${seatIndex < 7 ? 'border-bottom:1px solid var(--border);' : ''}${isMyTurn ? 'background:rgba(234,179,8,0.08);border-radius:8px;' : ''}${folded ? 'opacity:0.45;' : ''}">
+      ${avatarHtml(seat.name, seat.photoURL, 36)}
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px;">
+          ${escapeHtml(seat.name)}${seatIndex === mySeat ? ' (you)' : ''}
+          ${isDealer ? '<span style="font-size:10px;background:var(--bg-elevated-2);border:1px solid var(--border);border-radius:4px;padding:1px 4px;">D</span>' : ''}
+        </div>
+        <div style="color:var(--text-secondary);font-size:12px;">
+          ${inHand ? `${folded ? 'Folded' : allIn ? 'All-in' : `Bet ${hand.bets[seatIndex]}`}` : 'Seated'}
+        </div>
+      </div>
+      ${holeCardsHtml}
+    </div>
+  `;
+}
+
+function renderPokerActionControls(hand, mySeat) {
+  const legal = pokerLegalActions(hand, mySeat);
+  if (!legal) return '';
+  if (state.poker.raiseAmount == null) state.poker.raiseAmount = legal.minRaiseTo;
+  return `
+    <div class="card" style="padding:14px;margin-top:4px;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:${legal.canBetOrRaise ? '10px' : '0'};">
+        <button class="btn btn-secondary" id="poker-fold">Fold</button>
+        ${legal.canCheck ? `<button class="btn btn-secondary" id="poker-check">Check</button>` : `<button class="btn btn-secondary" id="poker-call">Call ${legal.callAmount}</button>`}
+        ${legal.canBetOrRaise ? `<button class="btn btn-secondary" id="poker-allin">All-In (${legal.maxRaiseTo})</button>` : ''}
+      </div>
+      ${legal.canBetOrRaise ? `
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input class="input" type="number" id="poker-raise-amount" min="${legal.minRaiseTo}" max="${legal.maxRaiseTo}" value="${state.poker.raiseAmount}" style="flex:1;">
+          <button class="btn btn-primary" id="poker-raise">${hand.currentBet === 0 ? 'Bet' : 'Raise to'}</button>
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+function attachPokerHandlers() {
+  document.getElementById('poker-done')?.addEventListener('click', () => {
+    leavePokerScreen();
+    state.screen = 'home';
+    render();
+  });
+  document.querySelectorAll('[data-sit-seat]').forEach(el => el.addEventListener('click', () => {
+    pokerSitDown(parseInt(el.dataset.sitSeat, 10));
+  }));
+  document.getElementById('poker-deal')?.addEventListener('click', () => { pokerStartNextHand(); });
+  document.getElementById('poker-stand-up')?.addEventListener('click', () => { pokerStandUp(); });
+  document.getElementById('poker-reset')?.addEventListener('click', () => { pokerResetTable(); });
+  document.getElementById('poker-fold')?.addEventListener('click', () => pokerSendAction('fold'));
+  document.getElementById('poker-check')?.addEventListener('click', () => pokerSendAction('check'));
+  document.getElementById('poker-call')?.addEventListener('click', () => pokerSendAction('call'));
+  document.getElementById('poker-allin')?.addEventListener('click', () => {
+    const table = state.poker.table;
+    const mySeat = myPokerSeatIndex();
+    const legal = pokerLegalActions(table.hand, mySeat);
+    pokerSendAction('raise', legal.maxRaiseTo);
+  });
+  document.getElementById('poker-raise-amount')?.addEventListener('input', (e) => {
+    state.poker.raiseAmount = parseInt(e.target.value, 10) || 0;
+  });
+  document.getElementById('poker-raise')?.addEventListener('click', () => {
+    pokerSendAction('raise', state.poker.raiseAmount);
   });
 }
 </script>

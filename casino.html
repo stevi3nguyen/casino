@@ -315,6 +315,131 @@
   }
   .deal-fly { animation: dealCardFly 0.45s cubic-bezier(.2,.7,.3,1) both; }
 
+  /* -------------------------------------------------------------------
+     Poker — stadium table: skyline backdrop, dealer behind a glowing gold
+     rail, seats ringed on the rail, bet chips pushed toward the middle.
+  ------------------------------------------------------------------- */
+  .pk-wrap {
+    position: relative; width: 100%; max-width: 780px; aspect-ratio: 100 / 74;
+    margin: 4px auto 18px; isolation: isolate;
+  }
+  .pk-room {
+    position: absolute; left: -2%; right: -2%; top: -2%; height: 46%; z-index: 0;
+    border-radius: 18px 18px 0 0; overflow: hidden;
+    background: linear-gradient(180deg, #1a1030 0%, #2b1840 55%, #3d2148 100%);
+    -webkit-mask: linear-gradient(180deg, #000 55%, transparent 100%);
+            mask: linear-gradient(180deg, #000 55%, transparent 100%);
+  }
+  .pk-room svg { width: 100%; height: 100%; display: block; }
+  .pk-dealer {
+    position: absolute; left: 50%; top: 1%; width: 19%; min-width: 96px; max-width: 150px;
+    transform: translateX(-50%); z-index: 1; text-align: center;
+  }
+  .pk-dealer svg { width: 100%; display: block; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5)); }
+  .pk-dealer-tag {
+    display: inline-block; margin-top: -2px; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--cream-dim); background: rgba(0,0,0,0.45); border: 1px solid var(--border);
+    border-radius: 999px; padding: 1px 10px; position: relative; z-index: 3;
+  }
+  .pk-table {
+    position: absolute; left: 4%; right: 4%; top: 19%; bottom: 4%; z-index: 2;
+    border-radius: 999px;
+    background: var(--felt);
+    background-image:
+      radial-gradient(ellipse at 50% 30%, rgba(255,255,255,0.09), transparent 60%),
+      radial-gradient(ellipse at 50% 110%, rgba(0,0,0,0.35), transparent 65%);
+    box-shadow:
+      0 0 0 9px var(--rail), 0 0 0 11px var(--gold),
+      0 0 30px 10px rgba(240,206,126,0.28),
+      0 26px 50px rgba(0,0,0,0.6), inset 0 0 70px rgba(0,0,0,0.42);
+  }
+  .pk-table::before {
+    content: ''; position: absolute; inset: 9% 7%; border-radius: 999px;
+    border: 2px solid rgba(240,206,126,0.28);
+  }
+  .pk-table::after {
+    content: "Stevie's Casino"; position: absolute; left: 0; right: 0; top: 66%;
+    text-align: center; font-family: var(--font-title); font-size: clamp(11px, 2.4vw, 17px);
+    letter-spacing: 0.12em; color: rgba(240,206,126,0.16); pointer-events: none;
+  }
+  .pk-center {
+    position: absolute; left: 50%; top: 52%; transform: translate(-50%, -50%); z-index: 3;
+    display: flex; flex-direction: column; align-items: center; gap: 8px; width: 64%;
+  }
+  .pk-center .playing-card { width: clamp(30px, 6.4vw, 48px); height: clamp(42px, 9vw, 67px); padding: 3px 4px; }
+  .pk-center .playing-card .pc-rank { font-size: clamp(10px, 2.2vw, 14px); }
+  .pk-center .playing-card .pc-suit-big { font-size: clamp(14px, 3.4vw, 22px); }
+  .pk-center .hand-row { flex-wrap: nowrap; gap: clamp(3px, 1vw, 8px); }
+  .pk-seat {
+    position: absolute; transform: translate(-50%, -50%); z-index: 4;
+    display: flex; flex-direction: column; align-items: center; gap: 2px; width: 92px; text-align: center;
+  }
+  .pk-seat.folded { opacity: 0.42; }
+  .pk-avatar-wrap { position: relative; width: 52px; height: 52px; border-radius: 50%; }
+  .pk-avatar-wrap .avatar { box-shadow: 0 0 0 2px var(--gold), 0 4px 10px rgba(0,0,0,0.55); }
+  .pk-seat.my-turn .pk-avatar-wrap .avatar { box-shadow: 0 0 0 3px var(--gold-bright), 0 0 18px 4px var(--gold); }
+  .pk-seat.is-me .pk-avatar-wrap .avatar { box-shadow: 0 0 0 3px var(--gold-bright), 0 4px 12px rgba(0,0,0,0.6); }
+  .pk-plate {
+    margin-top: -10px; position: relative; z-index: 2; min-width: 78px; max-width: 92px;
+    background: linear-gradient(180deg, rgba(34,24,12,0.96), rgba(14,10,6,0.96));
+    border: 1px solid var(--gold); border-radius: 10px; padding: 2px 6px 3px;
+  }
+  .pk-plate .pk-name { font-size: 10px; font-weight: 700; color: var(--cream); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pk-plate .pk-stack { font-size: 10px; color: var(--gold-bright); font-variant-numeric: tabular-nums; }
+  .pk-status {
+    position: absolute; top: -6px; left: 50%; transform: translateX(-50%); z-index: 3;
+    font-size: 9px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+    background: var(--red-suit); color: #fff; border-radius: 999px; padding: 1px 7px; white-space: nowrap;
+  }
+  .pk-seat.cards-below .pk-cards { order: 3; margin: 2px 0 0; }
+  .pk-cards { display: flex; gap: 2px; min-height: 42px; align-items: center; margin-bottom: 1px; }
+  .pk-cards .playing-card.small { box-shadow: 0 3px 8px rgba(0,0,0,0.55); }
+  .pk-seat.is-me .pk-cards .playing-card.small { width: 38px; height: 54px; }
+  .pk-seat.is-me .pk-cards .playing-card.small .pc-rank { font-size: 12px; }
+  .pk-seat.is-me .pk-cards .playing-card.small .pc-suit-big { font-size: 18px; }
+  .pk-bet {
+    position: absolute; transform: translate(-50%, -50%); z-index: 3;
+    display: inline-flex; align-items: center; gap: 4px; padding: 1px 9px 1px 3px;
+    background: rgba(0,0,0,0.55); border: 1px solid var(--border); border-radius: 999px;
+    font-size: 11px; font-weight: 700; color: var(--cream); font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .pk-bet i {
+    width: 14px; height: 14px; border-radius: 50%; display: inline-block;
+    background: repeating-conic-gradient(var(--gold-bright) 0deg 20deg, var(--red-suit) 20deg 40deg);
+    box-shadow: 0 0 0 1.5px var(--ink), inset 0 0 0 3px var(--card-face);
+  }
+  .pk-puck {
+    position: absolute; transform: translate(-50%, -50%); z-index: 3; width: 22px; height: 22px; border-radius: 50%;
+    background: var(--card-face); color: var(--ink); font-size: 11px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.6), 0 0 0 2px var(--gold);
+  }
+  .pk-empty {
+    width: 52px; height: 52px; border-radius: 50%; border: 1.5px dashed var(--gold);
+    display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700;
+    color: var(--gold-bright); background: rgba(0,0,0,0.3); cursor: pointer; text-align: center; line-height: 1.15;
+  }
+  .pk-actionbar { margin-top: 6px; }
+  .pk-pre { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 4px; }
+  .pk-pre button {
+    flex: 1 1 0; min-width: 84px; max-width: 150px; padding: 10px 6px; border-radius: 12px; font-size: 13px; font-weight: 700;
+    color: var(--cream); background: linear-gradient(180deg, rgba(58,33,18,0.9), rgba(24,14,8,0.95));
+    border: 1px solid var(--border);
+  }
+  .pk-pre button.on { color: var(--ink); background: linear-gradient(180deg, var(--gold-bright), var(--gold)); border-color: var(--gold-bright); }
+  .pk-presets { display: flex; gap: 6px; margin-bottom: 8px; }
+  .pk-presets button {
+    flex: 1; padding: 6px 4px; font-size: 12px; font-weight: 700; border-radius: 999px; color: var(--gold-bright);
+    background: rgba(0,0,0,0.35); border: 1px solid var(--border);
+  }
+
+  @media (max-width: 600px) {
+    .pk-wrap { aspect-ratio: 100 / 118; }
+    .pk-dealer { min-width: 70px; }
+    .pk-seat { width: 70px; }
+    .pk-avatar-wrap { width: 44px; height: 44px; }
+    .pk-plate { min-width: 62px; max-width: 72px; }
+    .pk-cards { min-height: 36px; }
+  }
   /* Sound toggle, top-right of the poker screen */
   .sound-toggle {
     width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center;
@@ -381,6 +506,8 @@ const state = {
     lastTickSecond: null,         // last countdown second we played a tick for
     lastAnimatedHandStreet: null, // same idea, for the deal-in card animation
     lastError: null,              // surfaced in the UI instead of failing silently
+    preAction: null,              // {type, handNumber, street} queued while waiting for my turn
+    preFiredKey: null,            // guards against firing the same queued action twice
   },
 };
 
@@ -1424,6 +1551,8 @@ let lastProcessedActionId = null;
 
 function enterPokerScreen() {
   state.poker.raiseAmount = null;
+  state.poker.preAction = null;
+  state.poker.preFiredKey = null;
   state.poker.lastSoundHandStreet = null;
   state.poker.lastSoundWasMyTurn = false;
   state.poker.lastSoundResultHandNumber = null;
@@ -2063,6 +2192,92 @@ function pokerUpdateSoundsAndAnim(table, hand, mySeat) {
   return animate;
 }
 
+// Seat geometry for the stadium table: a squircle (superellipse) ring so
+// seats hug the rails evenly, with a gap at the top where the dealer stands.
+// "You" (visualIndex 0) sits at the bottom. Returns {x, y} in percent of the
+// .pk-wrap box. Pure geometry — doesn't touch game state.
+function pkSeatPoint(visualIndex, totalSeats) {
+  let u = (visualIndex + 0.5) / totalSeats;
+  if (u >= 0.5) u -= 1;
+  const theta = u * 2 * Math.PI;
+  const sn = Math.sin(theta), cs = Math.cos(theta);
+  const x = 50 + 41 * Math.sign(sn) * Math.pow(Math.abs(sn), 0.75);
+  const y = 57 + 36 * Math.sign(cs) * Math.pow(Math.abs(cs), 0.75);
+  return { x, y };
+}
+// A point `f` of the way from a seat toward the middle of the table.
+function pkInward(pt, f) {
+  return { x: pt.x + (50 - pt.x) * f, y: pt.y + (57 - pt.y) * f };
+}
+function pkPosStyle(pt) { return `left:${pt.x.toFixed(2)}%;top:${pt.y.toFixed(2)}%;`; }
+
+// Original artwork (not taken from anywhere): a night skyline behind the
+// table and a friendly illustrated dealer standing behind the top rail.
+const PK_SKYLINE_SVG = `<svg viewBox="0 0 400 120" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+  <g fill="#f0ce7e" opacity="0.7"><circle cx="40" cy="18" r="1.2"/><circle cx="96" cy="30" r="1"/><circle cx="170" cy="12" r="1.3"/><circle cx="250" cy="24" r="1"/><circle cx="318" cy="10" r="1.2"/><circle cx="370" cy="32" r="1"/></g>
+  <g fill="#120a22">
+    <rect x="0" y="70" width="34" height="50"/><rect x="30" y="52" width="26" height="68"/><rect x="58" y="78" width="30" height="42"/>
+    <rect x="90" y="40" width="22" height="80"/><rect x="114" y="64" width="34" height="56"/><rect x="150" y="84" width="28" height="36"/>
+    <rect x="224" y="84" width="28" height="36"/><rect x="254" y="58" width="30" height="62"/><rect x="286" y="34" width="22" height="86"/>
+    <rect x="310" y="68" width="32" height="52"/><rect x="344" y="48" width="28" height="72"/><rect x="372" y="76" width="28" height="44"/>
+  </g>
+  <g fill="#f0ce7e" opacity="0.55">
+    <rect x="36" y="60" width="3" height="4"/><rect x="44" y="72" width="3" height="4"/><rect x="95" y="50" width="3" height="4"/><rect x="101" y="66" width="3" height="4"/>
+    <rect x="120" y="74" width="3" height="4"/><rect x="132" y="86" width="3" height="4"/><rect x="260" y="68" width="3" height="4"/><rect x="272" y="82" width="3" height="4"/>
+    <rect x="291" y="46" width="3" height="4"/><rect x="298" y="62" width="3" height="4"/><rect x="350" y="58" width="3" height="4"/><rect x="360" y="74" width="3" height="4"/>
+  </g>
+</svg>`;
+const PK_DEALER_SVG = `<svg viewBox="0 0 120 110" aria-hidden="true">
+  <path d="M8 110 C8 74 30 62 60 62 C90 62 112 74 112 110 Z" fill="#2a1a3a"/>
+  <path d="M44 62 L60 92 L76 62 Z" fill="#fdfaf2"/>
+  <path d="M60 92 L52 110 L68 110 Z" fill="#a3262b"/>
+  <path d="M52 66 L60 72 L68 66 L66 78 L60 74 L54 78 Z" fill="#a3262b"/>
+  <rect x="52" y="50" width="16" height="16" rx="6" fill="#e8b98f"/>
+  <ellipse cx="60" cy="34" rx="22" ry="25" fill="#f1c9a2"/>
+  <path d="M37 32 C34 8 56 2 66 6 C84 8 88 22 83 34 C78 22 66 17 56 19 C46 20 40 24 37 32 Z" fill="#3a2315"/>
+  <circle cx="51" cy="37" r="2.3" fill="#2b1a10"/><circle cx="69" cy="37" r="2.3" fill="#2b1a10"/>
+  <path d="M52 47 Q60 54 68 47" stroke="#8a3b2e" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  <path d="M12 104 L26 76 M108 104 L94 76" stroke="#f0ce7e" stroke-width="2" opacity="0.8"/>
+</svg>`;
+
+// Queue-ahead buttons (Fold / Check-Fold / Check / Call Any). The choice is
+// remembered for the current hand + street only, then runs by itself the
+// moment it becomes my turn — the same way real poker apps behave.
+function pokerRunPreAction(hand, mySeat) {
+  const pa = state.poker.preAction;
+  if (!pa) return;
+  if (!hand || mySeat === -1 || hand.street === 'complete' || hand.handNumber !== pa.handNumber ||
+      hand.street !== pa.street || hand.folded[mySeat]) { state.poker.preAction = null; return; }
+  if (hand.currentTurnSeat !== mySeat) return;
+  const legal = pokerLegalActions(hand, mySeat);
+  if (!legal) return;
+  let act = null;
+  if (pa.type === 'fold') act = 'fold';
+  else if (pa.type === 'checkfold') act = legal.canCheck ? 'check' : 'fold';
+  else if (pa.type === 'check') act = legal.canCheck ? 'check' : null;
+  else if (pa.type === 'callany') act = legal.canCheck ? 'check' : 'call';
+  state.poker.preAction = null;
+  if (!act) return;
+  const key = `${hand.handNumber}:${hand.street}:${hand.turnStartedAt || 0}`;
+  if (state.poker.preFiredKey === key) return;
+  state.poker.preFiredKey = key;
+  setTimeout(() => { pokerSendAction(act); }, 350);
+}
+
+function renderPokerPreActions(hand, mySeat) {
+  const pa = state.poker.preAction;
+  const on = (t) => (pa && pa.type === t) ? ' on' : '';
+  return `
+    <div class="pk-pre">
+      <button data-pk-pre="fold" class="${on('fold').trim()}">Fold</button>
+      <button data-pk-pre="checkfold" class="${on('checkfold').trim()}">Check / Fold</button>
+      <button data-pk-pre="check" class="${on('check').trim()}">Check</button>
+      <button data-pk-pre="callany" class="${on('callany').trim()}">Call Any</button>
+    </div>
+    <p style="text-align:center;color:var(--text-tertiary);font-size:11px;margin:6px 0 0;">Pick ahead — it plays automatically when your turn comes.</p>
+  `;
+}
+
 function renderPokerScreen() {
   const table = state.poker.table;
   if (!table) return `<div class="content"><div style="padding:40px;text-align:center;color:var(--text-tertiary);">Loading table…</div></div>`;
@@ -2072,15 +2287,26 @@ function renderPokerScreen() {
   const canDeal = (!hand || hand.street === 'complete') && seatedCount >= 2;
   const totalSeats = table.seats.length || 8;
   const animate = pokerUpdateSoundsAndAnim(table, hand, mySeat);
+  pokerRunPreAction(hand, mySeat);
 
+  const handLive = !!(hand && hand.street !== 'complete');
   const dealerSeatIdx = hand ? hand.dealerSeat : table.dealerSeat;
-  const dealerPuckHtml = (dealerSeatIdx != null && table.seats[dealerSeatIdx])
-    ? `<div class="poker-dealer-puck-pos" style="${pokerVisualPosStyle(dealerSeatIdx, mySeat, totalSeats, 33, 29)}"><span class="dealer-puck">D</span></div>`
-    : '';
+  let puckHtml = '';
+  if (dealerSeatIdx != null && table.seats[dealerSeatIdx]) {
+    const pt = pkSeatPoint(pokerVisualIndex(dealerSeatIdx, mySeat, totalSeats), totalSeats);
+    const q = pkInward(pt, 0.3);
+    // nudge sideways so the puck doesn't sit on top of the bet pill
+    puckHtml = `<div class="pk-puck" style="${pkPosStyle({ x: q.x + (pt.x < 50 ? 7 : -7), y: q.y - 9 })}">D</div>`;
+  }
 
   const communityHtml = hand && hand.community.length
     ? hand.community.map((c, i) => pokerCardHtml(c, false, animate, i)).join('')
     : '';
+  const pot = hand ? Object.values(hand.totalContributed).reduce((a, b) => a + b, 0) : 0;
+
+  const myTurn = !!(mySeat !== -1 && hand && hand.currentTurnSeat === mySeat);
+  const canPreAct = !!(mySeat !== -1 && handLive && !myTurn && !hand.folded[mySeat] && !hand.allIn[mySeat] &&
+    hand.seatsInHand && hand.seatsInHand.includes(mySeat));
 
   return `
     <div class="topbar">
@@ -2097,41 +2323,56 @@ function renderPokerScreen() {
           <button class="btn btn-ghost btn-sm" id="poker-dismiss-error" style="flex-shrink:0;">Dismiss</button>
         </div>
       ` : ''}
-      <div class="chip-count" style="justify-content:center;color:var(--gold-bright);margin-bottom:14px;">
+      <div class="chip-count" style="justify-content:center;color:var(--gold-bright);margin-bottom:10px;">
         <span class="chip-icon"></span>${state.chips ?? 0} chips
       </div>
 
-      <div class="poker-oval-wrap">
-        <div class="poker-oval"></div>
-        ${dealerPuckHtml}
-        <div class="poker-center">
-          ${hand && hand.street !== 'complete' ? `
-            <div class="poker-pot-badge">Pot: ${Object.values(hand.totalContributed).reduce((a, b) => a + b, 0)}</div>
-            <div class="hand-row">${communityHtml || '<span style="color:var(--text-tertiary);font-size:12px;">Preflop</span>'}</div>
+      <div class="pk-wrap">
+        <div class="pk-room">${PK_SKYLINE_SVG}</div>
+        <div class="pk-dealer">${PK_DEALER_SVG}<span class="pk-dealer-tag">Dealer</span></div>
+        <div class="pk-table"></div>
+        <div class="pk-center">
+          ${handLive ? `
+            <div class="poker-pot-badge">Pot: ${pot}</div>
+            <div class="hand-row">${communityHtml || '<span style="color:var(--cream-dim);font-size:12px;">Preflop</span>'}</div>
           ` : (!hand || !hand.result) ? `
-            <div style="color:var(--text-tertiary);font-size:12px;">No hand in progress</div>
+            <div style="color:var(--cream-dim);font-size:12px;">No hand in progress</div>
           ` : ''}
         </div>
+        ${puckHtml}
         ${hand && hand.street === 'complete' && hand.result ? renderPokerWinBanner(table, hand) : ''}
         ${Array.from({ length: totalSeats }, (_, i) => renderPokerSeatPos(table, hand, i, mySeat, totalSeats, animate)).join('')}
+        ${Array.from({ length: totalSeats }, (_, i) => renderPokerBetPill(hand, i, mySeat, totalSeats)).join('')}
       </div>
 
-      ${mySeat === -1 ? `
-        <p style="text-align:center;color:var(--text-tertiary);font-size:13px;">Tap an empty seat above to sit down.</p>
-      ` : canDeal ? `
-        <button class="btn btn-primary btn-block" id="poker-deal">Deal Next Hand</button>
-      ` : ''}
+      <div class="pk-actionbar">
+        ${mySeat === -1 ? `
+          <p style="text-align:center;color:var(--text-tertiary);font-size:13px;">Tap an empty seat above to sit down.</p>
+        ` : canDeal ? `
+          <button class="btn btn-primary btn-block" id="poker-deal">Deal Next Hand</button>
+        ` : ''}
 
-      ${mySeat !== -1 && hand && hand.currentTurnSeat === mySeat ? renderPokerActionControls(hand, mySeat) : ''}
+        ${myTurn ? renderPokerActionControls(hand, mySeat) : ''}
+        ${canPreAct ? renderPokerPreActions(hand, mySeat) : ''}
 
-      ${mySeat !== -1 && (!hand || hand.street === 'complete') ? `
-        <button class="btn btn-ghost btn-sm btn-block" id="poker-stand-up" style="margin-top:10px;">Stand Up</button>
-      ` : ''}
-      ${hand && hand.street !== 'complete' ? `
-        <button class="btn btn-ghost btn-sm btn-block" id="poker-reset" style="margin-top:14px;color:var(--text-tertiary);">Reset Table (use if the hand gets stuck)</button>
-      ` : ''}
+        ${mySeat !== -1 && (!hand || hand.street === 'complete') ? `
+          <button class="btn btn-ghost btn-sm btn-block" id="poker-stand-up" style="margin-top:10px;">Stand Up</button>
+        ` : ''}
+        ${handLive ? `
+          <button class="btn btn-ghost btn-sm btn-block" id="poker-reset" style="margin-top:14px;color:var(--text-tertiary);">Reset Table (use if the hand gets stuck)</button>
+        ` : ''}
+      </div>
     </div>
   `;
+}
+
+function renderPokerBetPill(hand, seatIndex, mySeat, totalSeats) {
+  if (!hand || hand.street === 'complete') return '';
+  if (!hand.seatsInHand || !hand.seatsInHand.includes(seatIndex)) return '';
+  const bet = hand.bets[seatIndex] || 0;
+  if (bet <= 0) return '';
+  const pt = pkSeatPoint(pokerVisualIndex(seatIndex, mySeat, totalSeats), totalSeats);
+  return `<div class="pk-bet" style="${pkPosStyle(pkInward(pt, 0.5))}"><i></i>${bet}</div>`;
 }
 
 function renderPokerWinBanner(table, hand) {
@@ -2156,12 +2397,14 @@ function renderPokerWinBanner(table, hand) {
 function renderPokerSeatPos(table, hand, seatIndex, mySeat, totalSeats, animate) {
   const seat = table.seats[seatIndex];
   const visualIndex = pokerVisualIndex(seatIndex, mySeat, totalSeats);
-  const posStyle = pokerSeatStyle(visualIndex, totalSeats, 44, 40);
+  const seatPt = pkSeatPoint(visualIndex, totalSeats);
+  const posStyle = pkPosStyle(seatPt);
 
   if (!seat) {
+    // Only offer empty seats while I'm not seated anywhere at this table.
     return `
-      <div class="poker-seat-pos" style="${posStyle}">
-        <div class="poker-empty-seat" data-sit-seat="${seatIndex}">${mySeat === -1 ? 'Sit Here' : ''}</div>
+      <div class="pk-seat" style="${posStyle}">
+        <div class="pk-empty"${mySeat === -1 ? ` data-sit-seat="${seatIndex}"` : ' style="cursor:default;opacity:0.45;"'}>${mySeat === -1 ? 'Sit<br>Here' : ''}</div>
       </div>
     `;
   }
@@ -2170,10 +2413,11 @@ function renderPokerSeatPos(table, hand, seatIndex, mySeat, totalSeats, animate)
   const isMyTurn = hand && hand.currentTurnSeat === seatIndex;
   const folded = inHand && hand.folded[seatIndex];
   const allIn = inHand && hand.allIn[seatIndex];
+  const isMe = seatIndex === mySeat;
 
   let holeCardsHtml = '';
   if (inHand) {
-    if (seatIndex === mySeat && state.poker.myHoleCards && state.poker.myHoleCards.handNumber === hand.handNumber) {
+    if (isMe && state.poker.myHoleCards && state.poker.myHoleCards.handNumber === hand.handNumber) {
       holeCardsHtml = state.poker.myHoleCards.cards.map((c, i) => pokerCardHtmlSmall(c, false, animate, visualIndex * 2 + i)).join('');
     } else if (hand.result && hand.result.revealedHoleCards && hand.result.revealedHoleCards[seatIndex]) {
       holeCardsHtml = hand.result.revealedHoleCards[seatIndex].map(c => pokerCardHtmlSmall(c, false)).join('');
@@ -2183,22 +2427,28 @@ function renderPokerSeatPos(table, hand, seatIndex, mySeat, totalSeats, animate)
   }
 
   let timerHtml = '';
-  if (isMyTurn && hand.turnStartedAt) {
+  if (isMyTurn && hand.turnStartedAt && hand.street !== 'complete') {
     const remain = Math.max(0, POKER_TURN_LIMIT_MS - (Date.now() - hand.turnStartedAt));
     const pct = remain / POKER_TURN_LIMIT_MS;
     const seconds = Math.ceil(remain / 1000);
     timerHtml = `<div class="poker-timer-ring" style="--pct:${pct.toFixed(3)}"></div><div class="poker-timer-badge">${seconds}</div>`;
   }
 
+  const stack = inHand && hand.stacks && hand.stacks[seatIndex] != null ? hand.stacks[seatIndex] : seat.chips;
+  const statusTag = folded ? 'Fold' : allIn ? 'All-in' : '';
+
   return `
-    <div class="poker-seat-pos${isMyTurn ? ' my-turn' : ''}${folded ? ' folded' : ''}" style="${posStyle}">
-      <div class="poker-seat-avatar-wrap">
+    <div class="pk-seat${isMyTurn ? ' my-turn' : ''}${folded ? ' folded' : ''}${isMe ? ' is-me' : ''}${seatPt.y < 40 ? ' cards-below' : ''}" style="${posStyle}">
+      ${holeCardsHtml ? `<div class="pk-cards">${holeCardsHtml}</div>` : ''}
+      <div class="pk-avatar-wrap">
         ${timerHtml}
-        ${avatarHtml(seat.name, seat.photoURL, 50)}
+        ${avatarHtml(seat.name, seat.photoURL, 52)}
+        ${statusTag ? `<span class="pk-status"${statusTag === 'All-in' ? ' style="background:var(--gold);color:var(--ink);"' : ''}>${statusTag}</span>` : ''}
       </div>
-      <div class="poker-seat-name">${escapeHtml(seat.name)}${seatIndex === mySeat ? ' (you)' : ''}</div>
-      <div class="poker-seat-chips">${inHand ? (folded ? 'Folded' : allIn ? 'All-in' : `Bet ${hand.bets[seatIndex]}`) : 'Seated'}</div>
-      ${holeCardsHtml ? `<div class="poker-seat-cards">${holeCardsHtml}</div>` : ''}
+      <div class="pk-plate">
+        <div class="pk-name">${escapeHtml(seat.name)}${isMe ? ' (you)' : ''}</div>
+        <div class="pk-stack">${stack ?? 0}</div>
+      </div>
     </div>
   `;
 }
@@ -2207,8 +2457,18 @@ function renderPokerActionControls(hand, mySeat) {
   const legal = pokerLegalActions(hand, mySeat);
   if (!legal) return '';
   if (state.poker.raiseAmount == null) state.poker.raiseAmount = legal.minRaiseTo;
+  state.poker.raiseAmount = Math.max(legal.minRaiseTo, Math.min(legal.maxRaiseTo, state.poker.raiseAmount));
   return `
     <div class="card" style="padding:14px;margin-top:4px;">
+      ${legal.canBetOrRaise ? `
+        <div class="pk-presets">
+          <button data-pk-preset="0.5">½ Pot</button>
+          <button data-pk-preset="0.75">¾ Pot</button>
+          <button data-pk-preset="1">Pot</button>
+          <button data-pk-preset="max">All-In</button>
+        </div>
+        <input type="range" id="poker-raise-slider" min="${legal.minRaiseTo}" max="${legal.maxRaiseTo}" value="${state.poker.raiseAmount}" style="width:100%;margin:0 0 8px;accent-color:var(--gold);">
+      ` : ''}
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:${legal.canBetOrRaise ? '10px' : '0'};">
         <button class="btn btn-danger" id="poker-fold">Fold</button>
         ${legal.canCheck ? `<button class="btn btn-secondary" id="poker-check">Check</button>` : `<button class="btn btn-secondary" id="poker-call">Call ${legal.callAmount}</button>`}
@@ -2259,6 +2519,36 @@ function attachPokerHandlers() {
   document.getElementById('poker-raise')?.addEventListener('click', () => {
     pokerSendAction('raise', state.poker.raiseAmount);
   });
+  document.getElementById('poker-raise-slider')?.addEventListener('input', (e) => {
+    state.poker.raiseAmount = parseInt(e.target.value, 10) || 0;
+    const box = document.getElementById('poker-raise-amount');
+    if (box) box.value = state.poker.raiseAmount;
+  });
+  document.querySelectorAll('[data-pk-preset]').forEach(el => el.addEventListener('click', () => {
+    const table = state.poker.table;
+    const mySeat = myPokerSeatIndex();
+    if (!table || !table.hand || mySeat === -1) return;
+    const hand = table.hand;
+    const legal = pokerLegalActions(hand, mySeat);
+    if (!legal) return;
+    const pot = Object.values(hand.totalContributed).reduce((a, b) => a + b, 0);
+    const toCall = hand.currentBet - hand.bets[mySeat];
+    const v = el.dataset.pkPreset;
+    let target = v === 'max' ? legal.maxRaiseTo
+      : hand.bets[mySeat] + toCall + Math.round(parseFloat(v) * (pot + toCall));
+    state.poker.raiseAmount = Math.max(legal.minRaiseTo, Math.min(legal.maxRaiseTo, target));
+    render();
+  }));
+  document.querySelectorAll('[data-pk-pre]').forEach(el => el.addEventListener('click', () => {
+    const table = state.poker.table;
+    if (!table || !table.hand) return;
+    const type = el.dataset.pkPre;
+    const cur = state.poker.preAction;
+    state.poker.preAction = (cur && cur.type === type)
+      ? null
+      : { type, handNumber: table.hand.handNumber, street: table.hand.street };
+    render();
+  }));
 }
 </script>
 </body>

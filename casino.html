@@ -1010,7 +1010,7 @@ function handValue(cards) {
 // result and one of the seated players' clients deals the next hand (the
 // existing deal transaction already makes sure only one of them wins the race).
 // If someone lets their 15s turn timer run out, the table records it on the
-// hand (`timedOutSeats`) and they're stood up once the hand is over.
+// hand (`timedOutUIDs`) and they're stood up once the hand is over.
 // ============================================================================
 const AUTO_DEAL_AFTER_RESULT_MS = 7000; // lets everyone read the win banner
 const AUTO_DEAL_AFTER_SIT_MS = 4000;    // lets Blackjack players pick a bet
@@ -1019,9 +1019,26 @@ const autoState = {
   poker: { completeKey: null, completeAt: 0, eligibleSince: null, lastAttempt: 0, kickedHand: null },
   bj:    { completeKey: null, completeAt: 0, eligibleSince: null, lastAttempt: 0, kickedHand: null },
 };
-function autoMarkTimedOut(hand, seat) {
-  if (!hand.timedOutSeats) hand.timedOutSeats = [];
-  if (!hand.timedOutSeats.includes(seat)) hand.timedOutSeats.push(seat);
+// Idle players are tracked by their account (uid), NOT by seat number — a
+// seat number could be taken by someone else (or by the same person sitting
+// back down) before the next hand, and they'd wrongly look "idle".
+function autoMarkTimedOut(hand, uid) {
+  if (!uid) return;
+  if (!hand.timedOutUIDs) hand.timedOutUIDs = [];
+  if (!hand.timedOutUIDs.includes(uid)) hand.timedOutUIDs.push(uid);
+}
+function autoSeatUid(table, seat) {
+  return table && table.seats[seat] ? table.seats[seat].authUID : null;
+}
+// Seat numbers of whoever timed out in the hand that just finished and is
+// still sitting there. Empty unless that hand is complete.
+function autoKickedSeats(table, isPoker) {
+  const hand = table && table.hand;
+  const out = new Set();
+  if (!hand || !hand.timedOutUIDs || !hand.timedOutUIDs.length) return out;
+  if (isPoker ? hand.street !== 'complete' : hand.phase !== 'complete') return out;
+  table.seats.forEach((sd, i) => { if (sd && hand.timedOutUIDs.includes(sd.authUID)) out.add(i); });
+  return out;
 }
 function autoJitterMs() {
   // Different clients try at slightly different moments so they don't all
@@ -1043,7 +1060,7 @@ function autoDealInfo(kind) {
   if (inProgress) { a.eligibleSince = null; return null; }
   const key = hand ? 'h' + hand.handNumber : 'none';
   if (a.completeKey !== key) { a.completeKey = key; a.completeAt = hand ? Date.now() : 0; a.eligibleSince = null; }
-  const kicked = new Set((hand && hand.timedOutSeats) || []);
+  const kicked = autoKickedSeats(table, isPoker);
   const eligible = table.seats.map((s, i) => (s && !kicked.has(i)) ? i : null).filter(i => i !== null);
   const need = isPoker ? 2 : 1;
   if (eligible.length < need) { a.eligibleSince = null; return { waiting: true, need: need - eligible.length, kicked }; }
@@ -1168,7 +1185,7 @@ function bjTurnTimerTick() {
         && myBjRunningHand.turnStartedAt && Date.now() - myBjRunningHand.turnStartedAt >= BJ_TURN_LIMIT_MS) {
       try {
         bjtApplyAction(myBjRunningHand, seat, 'stand');
-        autoMarkTimedOut(myBjRunningHand, seat);
+        autoMarkTimedOut(myBjRunningHand, autoSeatUid(state.bj.table, seat));
         db.collection('blackjackTables').doc(BJ_TABLE_ID).update({
           hand: bjtHandForFirestore(myBjRunningHand), requestedAction: null,
         }).catch(e => console.error('blackjack timeout write failed', e));
@@ -1369,7 +1386,7 @@ async function bjtStartNextHand() {
     let table = state.bj.table;
     if (!table) return;
     // Anyone who timed out in the last hand is dropped from the table here.
-    const kickedBj = new Set((table.hand && table.hand.timedOutSeats) || []);
+    const kickedBj = autoKickedSeats(table, false);
     if (kickedBj.size) table = { ...table, seats: table.seats.map((s, i) => kickedBj.has(i) ? null : s) };
     const seatedIdx = bjtOccupiedSeats(table);
     if (seatedIdx.length === 0) return;
@@ -1431,7 +1448,7 @@ function maybeRunBjHandLogic() {
     lastProcessedBjActionId = req.actionId;
     try {
       bjtApplyAction(myBjRunningHand, req.seat, req.type);
-      if (req.timedOut) autoMarkTimedOut(myBjRunningHand, req.seat);
+      if (req.timedOut) autoMarkTimedOut(myBjRunningHand, req.authUID);
     } catch (e) {
       console.error('blackjack action rejected', e.message);
     }
@@ -1490,7 +1507,8 @@ async function bjtSitDown(seatIndex) {
       }
       const seats = table.seats.slice();
       seats[seatIndex] = { employeeId: state.employee.id, authUID: state.user.uid, name: state.employee.name, photoURL: state.employee.photoURL || null, bet: 50 };
-      tx.set(ref, { ...table, seats }, { merge: true });
+      const hand2 = table.hand && table.hand.timedOutUIDs ? { ...table.hand, timedOutUIDs: table.hand.timedOutUIDs.filter(u => u !== state.user.uid) } : table.hand;
+      tx.set(ref, { ...table, seats, hand: hand2 }, { merge: true });
     });
     state.bj.lastError = null;
   } catch (e) {
@@ -1512,7 +1530,9 @@ async function bjtStandUp() {
       const cur = snap.data();
       if (cur.hand && cur.hand.phase !== 'complete') return; // never mid-hand
       const seats = cur.seats.map(s => (s && s.authUID === state.user.uid) ? null : s);
-      tx.update(ref, { seats });
+      const upd = { seats };
+      if (cur.hand && cur.hand.timedOutUIDs) upd['hand.timedOutUIDs'] = cur.hand.timedOutUIDs.filter(u => u !== state.user.uid);
+      tx.update(ref, upd);
     });
     state.bj.lastError = null;
   } catch (e) {
@@ -1917,7 +1937,7 @@ function pokerTurnTimerTick() {
       if (legal) {
         try {
           pokerApplyAction(myRunningHand, seat, legal.canCheck ? 'check' : 'fold');
-          autoMarkTimedOut(myRunningHand, seat);
+          autoMarkTimedOut(myRunningHand, autoSeatUid(state.poker.table, seat));
           if (myRunningHand.street === 'showdown') pokerFinishShowdown(myRunningHand, myRunningHoleCards);
           db.collection('pokerTables').doc(POKER_TABLE_ID).update({
             hand: pokerHandForFirestore(myRunningHand), requestedAction: null,
@@ -2185,7 +2205,7 @@ async function pokerStartNextHand() {
     let table = state.poker.table;
     if (!table) return;
     // Anyone who timed out in the last hand is dropped from the table here.
-    const kickedPk = new Set((table.hand && table.hand.timedOutSeats) || []);
+    const kickedPk = autoKickedSeats(table, true);
     if (kickedPk.size) table = { ...table, seats: table.seats.map((s, i) => kickedPk.has(i) ? null : s) };
     const seatedIdx = pokerOccupiedSeats(table);
     if (seatedIdx.length < 2) return;
@@ -2196,6 +2216,21 @@ async function pokerStartNextHand() {
     const balances = await Promise.all(seatedIdx.map(i =>
       db.collection('casinoProfiles').doc(table.seats[i].authUID).get()
     ));
+    // Anyone seated with zero chips can't be dealt in. Clear them off the table
+    // (so they don't block everyone else) and let the next auto-deal try again.
+    const brokeUids = seatedIdx.filter((i, k) => balances[k] && balances[k].exists && (balances[k].data().chips ?? 0) <= 0)
+      .map(i => table.seats[i].authUID);
+    if (brokeUids.length) {
+      const pref = db.collection('pokerTables').doc(POKER_TABLE_ID);
+      await db.runTransaction(async (tx) => {
+        const snap = await tx.get(pref);
+        if (!snap.exists) return;
+        const cur = snap.data();
+        if (cur.hand && cur.hand.street !== 'complete') return;
+        tx.update(pref, { seats: cur.seats.map(sd => (sd && brokeUids.includes(sd.authUID)) ? null : sd) });
+      });
+      return;
+    }
     const tableForEngine = { seats: table.seats.map((s, i) => {
       if (!s) return null;
       const idx = seatedIdx.indexOf(i);
@@ -2257,7 +2292,7 @@ function maybeRunHandLogic() {
     lastProcessedActionId = req.actionId;
     try {
       pokerApplyAction(myRunningHand, req.seat, req.type, req.amount);
-      if (req.timedOut) autoMarkTimedOut(myRunningHand, req.seat);
+      if (req.timedOut) autoMarkTimedOut(myRunningHand, req.authUID);
     } catch (e) {
       console.error('poker action rejected', e.message);
       state.poker.lastError = `That action was rejected: ${e.message}`;
@@ -2313,7 +2348,8 @@ async function pokerSitDown(seatIndex) {
       }
       const seats = table.seats.slice();
       seats[seatIndex] = { employeeId: state.employee.id, authUID: state.user.uid, name: state.employee.name, photoURL: state.employee.photoURL || null };
-      tx.set(ref, { ...table, seats }, { merge: true });
+      const hand2 = table.hand && table.hand.timedOutUIDs ? { ...table.hand, timedOutUIDs: table.hand.timedOutUIDs.filter(u => u !== state.user.uid) } : table.hand;
+      tx.set(ref, { ...table, seats, hand: hand2 }, { merge: true });
     });
     state.poker.lastError = null;
   } catch (e) {
@@ -2335,7 +2371,9 @@ async function pokerStandUp() {
       const cur = snap.data();
       if (cur.hand && cur.hand.street !== 'complete') return; // never mid-hand
       const seats = cur.seats.map(s => (s && s.authUID === state.user.uid) ? null : s);
-      tx.update(ref, { seats });
+      const upd = { seats };
+      if (cur.hand && cur.hand.timedOutUIDs) upd['hand.timedOutUIDs'] = cur.hand.timedOutUIDs.filter(u => u !== state.user.uid);
+      tx.update(ref, upd);
     });
     state.poker.lastError = null;
   } catch (e) {
@@ -2634,6 +2672,7 @@ function renderPokerScreen() {
         ${myTurn ? renderPokerActionControls(hand, mySeat) : ''}
         ${canPreAct ? renderPokerPreActions(hand, mySeat) : ''}
 
+        ${(state.chips ?? 0) === 0 ? `<button class="btn btn-primary btn-block" id="poker-get-chips" style="margin-top:10px;">Get More Chips</button>` : ''}
         ${mySeat !== -1 && (!hand || hand.street === 'complete') ? `
           <button class="btn btn-ghost btn-sm btn-block" id="poker-stand-up" style="margin-top:10px;">Stand Up</button>
         ` : ''}
@@ -2790,6 +2829,7 @@ function attachPokerHandlers() {
   document.querySelectorAll('[data-sit-seat]').forEach(el => el.addEventListener('click', () => {
     pokerSitDown(parseInt(el.dataset.sitSeat, 10));
   }));
+  document.getElementById('poker-get-chips')?.addEventListener('click', resetChips);
   document.getElementById('poker-stand-up')?.addEventListener('click', () => { pokerStandUp(); });
   document.getElementById('poker-reset')?.addEventListener('click', () => { pokerResetTable(); });
   document.getElementById('poker-fold')?.addEventListener('click', () => pokerSendAction('fold'));

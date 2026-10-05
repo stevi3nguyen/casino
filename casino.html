@@ -418,6 +418,22 @@
     display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700;
     color: var(--gold-bright); background: rgba(0,0,0,0.3); cursor: pointer; text-align: center; line-height: 1.15;
   }
+  .pk-board { position: relative; display: flex; justify-content: center; width: 100%; }
+  .pk-board .hand-row { justify-content: center; }
+  .playing-card.pk-win-card { box-shadow: 0 0 0 2px var(--gold-bright), 0 0 16px 4px rgba(240,206,126,0.75); position: relative; z-index: 1; }
+  .playing-card.pk-dim { filter: brightness(0.5) saturate(0.7); }
+  .pk-ribbon {
+    position: absolute; left: -4%; right: -4%; top: 74%; z-index: 2; height: clamp(22px, 5vw, 32px);
+    display: flex; align-items: center; justify-content: center; gap: clamp(6px, 1.6vw, 12px);
+    background: linear-gradient(90deg, rgba(120,18,32,0) 0%, rgba(150,24,40,0.94) 12%, rgba(150,24,40,0.94) 88%, rgba(120,18,32,0) 100%);
+    border-top: 1px solid rgba(240,206,126,0.7); border-bottom: 1px solid rgba(240,206,126,0.7);
+    pointer-events: none;
+  }
+  .pk-ribbon span { font-family: var(--font-display); font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; font-size: clamp(13px, 3.4vw, 22px); color: var(--gold-bright); text-shadow: 0 2px 4px rgba(0,0,0,0.6); }
+  .pk-ribbon b { font-size: clamp(11px, 2.6vw, 16px); color: var(--gold-bright); border: 1px solid var(--gold); border-radius: 4px; padding: 0 5px; background: rgba(0,0,0,0.35); }
+  .pk-winner { display: inline-flex; align-items: baseline; gap: 8px; background: rgba(0,0,0,0.5); border: 1px solid var(--gold); border-radius: 999px; padding: 3px 14px; font-size: 12px; color: var(--cream); white-space: nowrap; }
+  .pk-winner strong { color: var(--gold-bright); font-variant-numeric: tabular-nums; }
+  .pk-winner em { font-style: normal; color: var(--cream-dim); font-size: 11px; }
   .pk-actionbar { margin-top: 6px; }
   .pk-pre { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 4px; }
   .pk-pre button {
@@ -2126,19 +2142,19 @@ async function pokerResetTable() {
 // ----------------------------------------------------------------------------
 // Rendering
 // ----------------------------------------------------------------------------
-function pokerCardHtml(card, faceDown, animate, delayIndex) {
+function pokerCardHtml(card, faceDown, animate, delayIndex, extraCls) {
   if (!card) return '';
   const animAttrs = animate ? ` style="animation-delay:${((delayIndex || 0) * 0.09).toFixed(2)}s"` : '';
   if (faceDown) return `<div class="playing-card back${animate ? ' deal-anim' : ''}"${animAttrs}></div>`;
   const isRed = card.suit === '♥' || card.suit === '♦';
-  return `<div class="playing-card${isRed ? ' red' : ''}${animate ? ' deal-anim' : ''}"${animAttrs}><div class="pc-rank">${card.rank}</div><div class="pc-suit-big">${card.suit}</div></div>`;
+  return `<div class="playing-card${isRed ? ' red' : ''}${animate ? ' deal-anim' : ''}${extraCls ? ' ' + extraCls : ''}"${animAttrs}><div class="pc-rank">${card.rank}</div><div class="pc-suit-big">${card.suit}</div></div>`;
 }
-function pokerCardHtmlSmall(card, faceDown, animate, delayIndex) {
+function pokerCardHtmlSmall(card, faceDown, animate, delayIndex, extraCls) {
   const animAttrs = animate ? ` style="animation-delay:${((delayIndex || 0) * 0.09).toFixed(2)}s"` : '';
   if (faceDown) return `<div class="playing-card back small${animate ? ' deal-anim' : ''}"${animAttrs}></div>`;
   if (!card) return '';
   const isRed = card.suit === '♥' || card.suit === '♦';
-  return `<div class="playing-card small${isRed ? ' red' : ''}${animate ? ' deal-anim' : ''}"${animAttrs}><div class="pc-rank">${card.rank}</div><div class="pc-suit-big">${card.suit}</div></div>`;
+  return `<div class="playing-card small${isRed ? ' red' : ''}${animate ? ' deal-anim' : ''}${extraCls ? ' ' + extraCls : ''}"${animAttrs}><div class="pc-rank">${card.rank}</div><div class="pc-suit-big">${card.suit}</div></div>`;
 }
 
 // A point on the oval for a seat (see pokerSeatStyle above) and the dealer
@@ -2264,6 +2280,33 @@ function pokerRunPreAction(hand, mySeat) {
   setTimeout(() => { pokerSendAction(act); }, 350);
 }
 
+
+// Showdown presentation: which five cards made each winner's hand (computed
+// here from the revealed hole cards + board, so the stored result is untouched),
+// plus the ribbon text ("TWO PAIR  10 9").
+function pkCardKey(c) { return c.rank + c.suit; }
+function pkShowdownInfo(hand) {
+  if (!hand || hand.street !== 'complete' || !hand.result || hand.result.wonByFold) return null;
+  const winners = Object.entries(hand.result.payouts).filter(([, a]) => a > 0).map(([sd]) => parseInt(sd, 10));
+  const keys = new Set();
+  let first = null;
+  for (const w of winners) {
+    const hole = hand.result.revealedHoleCards && hand.result.revealedHoleCards[w];
+    if (!hole) continue;
+    const best = pokerBestHand(hole.concat(hand.community));
+    best.cards.forEach(c => keys.add(pkCardKey(c)));
+    if (first === null) first = { seat: w, value: best.value };
+  }
+  if (!first) return null;
+  const face = (n) => ({ 14: 'A', 13: 'K', 12: 'Q', 11: 'J' }[n] || String(n));
+  const v = first.value, t = v[0];
+  let ranks = [];
+  if (t === 1 || t === 3 || t === 7 || t === 4 || t === 8 || t === 5) ranks = [v[1]];
+  else if (t === 2 || t === 6) ranks = [v[1], v[2]];
+  const name = (hand.result.bestHandBySeat[first.seat] && hand.result.bestHandBySeat[first.seat].name) || POKER_HAND_NAMES[t];
+  return { keys, name, ranks: ranks.map(face) };
+}
+
 function renderPokerPreActions(hand, mySeat) {
   const pa = state.poker.preAction;
   const on = (t) => (pa && pa.type === t) ? ' on' : '';
@@ -2299,9 +2342,12 @@ function renderPokerScreen() {
     puckHtml = `<div class="pk-puck" style="${pkPosStyle({ x: q.x + (pt.x < 50 ? 7 : -7), y: q.y - 9 })}">D</div>`;
   }
 
+  const showdown = pkShowdownInfo(hand);
   const communityHtml = hand && hand.community.length
-    ? hand.community.map((c, i) => pokerCardHtml(c, false, animate, i)).join('')
+    ? hand.community.map((c, i) => pokerCardHtml(c, false, animate, i, showdown ? (showdown.keys.has(pkCardKey(c)) ? 'pk-win-card' : 'pk-dim') : '')).join('')
     : '';
+  const ribbonHtml = showdown ? `
+    <div class="pk-ribbon"><span>${escapeHtml(showdown.name)}</span>${showdown.ranks.map(r => `<b>${r}</b>`).join('')}</div>` : '';
   const pot = hand ? Object.values(hand.totalContributed).reduce((a, b) => a + b, 0) : 0;
 
   const myTurn = !!(mySeat !== -1 && hand && hand.currentTurnSeat === mySeat);
@@ -2329,18 +2375,20 @@ function renderPokerScreen() {
 
       <div class="pk-wrap">
         <div class="pk-room">${PK_SKYLINE_SVG}</div>
-        <div class="pk-dealer">${PK_DEALER_SVG}<span class="pk-dealer-tag">Dealer</span></div>
+        
         <div class="pk-table"></div>
         <div class="pk-center">
           ${handLive ? `
             <div class="poker-pot-badge">Pot: ${pot}</div>
             <div class="hand-row">${communityHtml || '<span style="color:var(--cream-dim);font-size:12px;">Preflop</span>'}</div>
-          ` : (!hand || !hand.result) ? `
+          ` : (hand && hand.result) ? `
+            ${pkWinnerPill(table, hand)}
+            ${communityHtml ? `<div class="pk-board"><div class="hand-row">${communityHtml}</div>${ribbonHtml}</div>` : ''}
+          ` : `
             <div style="color:var(--cream-dim);font-size:12px;">No hand in progress</div>
-          ` : ''}
+          `}
         </div>
         ${puckHtml}
-        ${hand && hand.street === 'complete' && hand.result ? renderPokerWinBanner(table, hand) : ''}
         ${Array.from({ length: totalSeats }, (_, i) => renderPokerSeatPos(table, hand, i, mySeat, totalSeats, animate)).join('')}
         ${Array.from({ length: totalSeats }, (_, i) => renderPokerBetPill(hand, i, mySeat, totalSeats)).join('')}
       </div>
@@ -2364,6 +2412,14 @@ function renderPokerScreen() {
       </div>
     </div>
   `;
+}
+
+function pkWinnerPill(table, hand) {
+  const winners = Object.entries(hand.result.payouts).filter(([, a]) => a > 0).map(([sd]) => parseInt(sd, 10));
+  if (!winners.length) return '';
+  const total = winners.reduce((t, sd) => t + hand.result.payouts[sd], 0);
+  const names = winners.map(sd => table.seats[sd] ? escapeHtml(table.seats[sd].name) : '?').join(' & ');
+  return `<div class="pk-winner"><span>${names}${winners.length > 1 ? ' split' : ' wins'}</span><strong>+${total}</strong>${hand.result.wonByFold ? '<em>everyone folded</em>' : ''}</div>`;
 }
 
 function renderPokerBetPill(hand, seatIndex, mySeat, totalSeats) {
@@ -2418,9 +2474,11 @@ function renderPokerSeatPos(table, hand, seatIndex, mySeat, totalSeats, animate)
   let holeCardsHtml = '';
   if (inHand) {
     if (isMe && state.poker.myHoleCards && state.poker.myHoleCards.handNumber === hand.handNumber) {
-      holeCardsHtml = state.poker.myHoleCards.cards.map((c, i) => pokerCardHtmlSmall(c, false, animate, visualIndex * 2 + i)).join('');
+      const sdMine = pkShowdownInfo(hand);
+      holeCardsHtml = state.poker.myHoleCards.cards.map((c, i) => pokerCardHtmlSmall(c, false, animate, visualIndex * 2 + i, sdMine ? (sdMine.keys.has(pkCardKey(c)) ? 'pk-win-card' : 'pk-dim') : '')).join('');
     } else if (hand.result && hand.result.revealedHoleCards && hand.result.revealedHoleCards[seatIndex]) {
-      holeCardsHtml = hand.result.revealedHoleCards[seatIndex].map(c => pokerCardHtmlSmall(c, false)).join('');
+      const sd = pkShowdownInfo(hand);
+      holeCardsHtml = hand.result.revealedHoleCards[seatIndex].map(c => pokerCardHtmlSmall(c, false, false, 0, sd ? (sd.keys.has(pkCardKey(c)) ? 'pk-win-card' : 'pk-dim') : '')).join('');
     } else if (!folded) {
       holeCardsHtml = pokerCardHtmlSmall(null, true, animate, visualIndex * 2) + pokerCardHtmlSmall(null, true, animate, visualIndex * 2 + 1);
     }

@@ -563,6 +563,72 @@
     .pk-plate { min-width: 62px; max-width: 72px; }
     .pk-cards { min-height: 36px; }
   }
+
+  /* -------------------------------------------------------------------
+     Lobby — skyline hero with the player card, then two game tiles with
+     fanned-card artwork, gold rails and a soft glow on hover.
+  ------------------------------------------------------------------- */
+  .lobby-hero {
+    position: relative; overflow: hidden; border-radius: 22px; margin-bottom: 20px; text-align: center;
+    padding: 34px 20px 26px; isolation: isolate;
+    background: linear-gradient(180deg, #1a1030 0%, #2b1840 60%, #3d2148 100%);
+    box-shadow: 0 0 0 6px var(--rail), 0 0 0 7px var(--gold), 0 0 34px 6px rgba(240,206,126,0.18), 0 16px 40px rgba(0,0,0,0.5);
+  }
+  .lobby-hero .lobby-sky { position: absolute; left: 0; right: 0; bottom: 0; height: 70%; z-index: -1; opacity: 0.95; }
+  .lobby-hero .lobby-sky svg { width: 100%; height: 100%; display: block; }
+  .lobby-hero::after {
+    content: ''; position: absolute; inset: 0; z-index: -1;
+    background: radial-gradient(ellipse at 50% 100%, rgba(14,77,52,0.55), transparent 65%);
+  }
+  .lobby-welcome { font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--cream-dim); margin-bottom: 12px; }
+  .lobby-avatar { display: inline-block; border-radius: 50%; padding: 3px; background: linear-gradient(160deg, #fdedbb, var(--gold) 55%, #a87a2c); box-shadow: 0 6px 18px rgba(0,0,0,0.55); }
+  .lobby-avatar .avatar { border: 3px solid var(--rail); }
+  .lobby-name { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--cream); margin-top: 12px; }
+  .lobby-chips {
+    display: inline-flex; align-items: center; gap: 10px; margin-top: 12px; padding: 7px 20px 7px 10px; border-radius: 999px;
+    background: rgba(0,0,0,0.5); border: 1px solid var(--gold); color: var(--gold-bright);
+    font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; box-shadow: 0 0 20px rgba(240,206,126,0.18);
+  }
+  .lobby-chips .chip-icon { width: 28px; height: 28px; }
+  .lobby-chips small { font-size: 12px; font-weight: 600; color: var(--cream-dim); letter-spacing: 0.08em; text-transform: uppercase; }
+  .lobby-heading { text-align: center; margin: 4px 0 14px; font-size: 11px; letter-spacing: 0.26em; text-transform: uppercase; color: var(--gold); }
+  .lobby-heading::before, .lobby-heading::after { content: ''; display: inline-block; width: 36px; height: 1px; background: var(--gold); opacity: 0.5; vertical-align: middle; margin: 0 12px; }
+  .lobby-games { display: grid; grid-template-columns: 1fr; gap: 18px; }
+  @media (min-width: 640px) { .lobby-games { grid-template-columns: 1fr 1fr; } }
+  .lobby-tile {
+    position: relative; overflow: hidden; cursor: pointer; border-radius: 20px; min-height: 280px; padding: 22px 20px;
+    display: flex; flex-direction: column; justify-content: flex-end; text-align: left; isolation: isolate;
+    background: var(--felt);
+    background-image: radial-gradient(ellipse at 70% 15%, rgba(255,255,255,0.13), transparent 55%), radial-gradient(ellipse at 50% 120%, rgba(0,0,0,0.45), transparent 65%);
+    box-shadow: 0 0 0 6px var(--rail), 0 0 0 7px var(--gold), 0 14px 34px rgba(0,0,0,0.55), inset 0 0 60px rgba(0,0,0,0.4);
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+  .lobby-tile:hover { transform: translateY(-3px); box-shadow: 0 0 0 6px var(--rail), 0 0 0 7px var(--gold-bright), 0 0 36px 8px rgba(240,206,126,0.3), 0 18px 40px rgba(0,0,0,0.6), inset 0 0 60px rgba(0,0,0,0.4); }
+  .lobby-tile:active { transform: translateY(0) scale(0.99); }
+  .lobby-tile::before {
+    content: ''; position: absolute; inset: 10px; border-radius: 14px; border: 1px solid rgba(240,206,126,0.22); z-index: -1; pointer-events: none;
+  }
+  .lobby-art { position: absolute; left: 50%; margin-left: -75px; top: 22px; width: 150px; height: 120px; z-index: 0; pointer-events: none; }
+  .lobby-art .playing-card { position: absolute; width: 56px; height: 80px; box-shadow: 0 6px 14px rgba(0,0,0,0.55); }
+  .lobby-art .playing-card .pc-rank { font-size: 17px; }
+  .lobby-art .playing-card .pc-suit-big { font-size: 26px; }
+  .lobby-art .c1 { left: 18px; top: 22px; transform: rotate(-14deg); }
+  .lobby-art .c2 { left: 52px; top: 8px; transform: rotate(6deg); }
+  .lobby-art .c3 { left: 84px; top: 24px; transform: rotate(20deg); }
+  .lobby-art .mini-chip { position: absolute; width: 34px; height: 34px; border-radius: 50%; right: 4px; bottom: 0;
+    background: repeating-conic-gradient(var(--gold-bright) 0deg 20deg, var(--red-suit) 20deg 40deg);
+    box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 7px var(--card-face), 0 4px 8px rgba(0,0,0,0.5); }
+  .lobby-art .mini-chip.b { right: 26px; bottom: -6px; width: 30px; height: 30px; background: repeating-conic-gradient(#f4efe0 0deg 20deg, #1f4d8f 20deg 40deg); }
+  .lobby-art .badge21 { position: absolute; left: -26px; bottom: 6px; font-family: var(--font-title); font-size: 26px; color: var(--gold-bright); text-shadow: 0 2px 8px rgba(0,0,0,0.7); }
+  .lobby-tile h2 { margin: 0; font-family: var(--font-title); font-size: 24px; letter-spacing: 0.03em; line-height: 1.2;
+    background: linear-gradient(175deg, #fdedbb 0%, var(--gold-bright) 38%, var(--gold) 65%, #a87a2c 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); }
+  .lobby-tile p { margin: 6px 0 14px; font-size: 13px; color: var(--cream-dim); }
+  .lobby-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .lobby-tag { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cream); background: rgba(0,0,0,0.45); border: 1px solid var(--border); border-radius: 999px; padding: 3px 11px; }
+  .lobby-play { font-size: 13px; font-weight: 800; color: var(--ink); background: linear-gradient(180deg, var(--gold-bright), var(--gold)); border-radius: 999px; padding: 7px 18px; box-shadow: 0 3px 10px rgba(0,0,0,0.45); }
+  .lobby-foot { text-align: center; margin-top: 22px; font-size: 12px; color: var(--text-tertiary); }
+
   /* Sound toggle, top-right of the poker screen */
   .sound-toggle {
     width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center;
@@ -920,30 +986,40 @@ function renderHomeScreen() {
       <button class="btn btn-ghost btn-sm" id="home-signout">Sign Out</button>
     </div>
     <div class="content">
-      <div class="card" style="padding:24px 20px;text-align:center;margin-bottom:18px;">
-        ${avatarHtml(state.employee.name, state.employee.photoURL, 68)}
-        <div style="font-weight:700;margin-top:12px;">${escapeHtml(state.employee.name)}</div>
-        <div class="chip-count" style="justify-content:center;color:var(--gold-bright);font-size:18px;margin-top:8px;">
-          <span class="chip-icon"></span>${state.chips ?? '…'} chips
-        </div>
-        ${state.chips === 0 ? `<button class="btn btn-ghost btn-sm" id="home-get-chips" style="margin-top:8px;">Get More Chips</button>` : ''}
+      <div class="lobby-hero">
+        <div class="lobby-sky">${PK_SKYLINE_SVG}</div>
+        <div class="lobby-welcome">Welcome back</div>
+        <div class="lobby-avatar">${avatarHtml(state.employee.name, state.employee.photoURL, 76)}</div>
+        <div class="lobby-name">${escapeHtml(state.employee.name)}</div>
+        <div class="lobby-chips"><span class="chip-icon"></span>${state.chips ?? '…'} <small>chips</small></div>
+        ${state.chips === 0 ? `<div><button class="btn btn-primary btn-sm" id="home-get-chips" style="margin-top:12px;">Get More Chips</button></div>` : ''}
       </div>
-      <div class="card" style="padding:18px;display:flex;align-items:center;gap:14px;cursor:pointer;margin-bottom:12px;" id="home-play-blackjack">
-        <div style="font-size:30px;">♠</div>
-        <div style="flex:1;">
-          <div style="font-family:var(--font-display);font-weight:700;font-size:17px;color:var(--gold-bright);">Blackjack</div>
-          <div style="color:var(--text-secondary);font-size:13px;">You vs. the dealer. Hit, stand, or double down.</div>
+
+      <div class="lobby-heading">Choose your table</div>
+      <div class="lobby-games">
+        <div class="lobby-tile" id="home-play-blackjack">
+          <div class="lobby-art">
+            <div class="playing-card c1"><div class="pc-rank">A</div><div class="pc-suit-big">♠</div></div>
+            <div class="playing-card red c2"><div class="pc-rank">K</div><div class="pc-suit-big">♥</div></div>
+            <span class="badge21">21</span>
+          </div>
+          <h2>Blackjack</h2>
+          <p>You vs. the dealer. Hit, stand, or double down — blackjack pays 3 to 2.</p>
+          <div class="lobby-meta"><span class="lobby-tag">Up to 6 seats</span><span class="lobby-play">Play ›</span></div>
         </div>
-        <div style="color:var(--gold);font-size:20px;">›</div>
-      </div>
-      <div class="card" style="padding:18px;display:flex;align-items:center;gap:14px;cursor:pointer;" id="home-play-poker">
-        <div style="font-size:30px;">♦</div>
-        <div style="flex:1;">
-          <div style="font-family:var(--font-display);font-weight:700;font-size:17px;color:var(--gold-bright);">Texas Hold'em</div>
-          <div style="color:var(--text-secondary);font-size:13px;">One shared table. Sit down and play against coworkers.</div>
+        <div class="lobby-tile" id="home-play-poker">
+          <div class="lobby-art">
+            <div class="playing-card red c1"><div class="pc-rank">Q</div><div class="pc-suit-big">♦</div></div>
+            <div class="playing-card c2"><div class="pc-rank">J</div><div class="pc-suit-big">♣</div></div>
+            <div class="playing-card red c3"><div class="pc-rank">10</div><div class="pc-suit-big">♥</div></div>
+            <span class="mini-chip b"></span><span class="mini-chip"></span>
+          </div>
+          <h2>Texas Hold'em</h2>
+          <p>One shared table. Sit down and play against your coworkers.</p>
+          <div class="lobby-meta"><span class="lobby-tag">2–8 players</span><span class="lobby-play">Play ›</span></div>
         </div>
-        <div style="color:var(--gold);font-size:20px;">›</div>
       </div>
+      <div class="lobby-foot">Just for fun — chips have no real value.</div>
     </div>
   `;
 }

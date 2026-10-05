@@ -315,6 +315,113 @@
   }
   .deal-fly { animation: dealCardFly 0.45s cubic-bezier(.2,.7,.3,1) both; }
 
+
+  /* -------------------------------------------------------------------
+     Blackjack — same look as the poker table: skyline, glowing gold rail,
+     avatar + name plates, flat dealer side on top, curved side toward you.
+  ------------------------------------------------------------------- */
+  .bjx-wrap { position: relative; width: 100%; max-width: 700px; aspect-ratio: 100 / 84; margin: 4px auto 14px; isolation: isolate; }
+  .bjx-table {
+    position: absolute; left: 3%; right: 3%; top: 22%; bottom: 3%; z-index: 2;
+    border-radius: 0 0 50% 50% / 0 0 100% 100%;
+    background: var(--felt);
+    background-image:
+      radial-gradient(ellipse at 50% 8%, rgba(255,255,255,0.10), transparent 55%),
+      radial-gradient(ellipse at 50% 108%, rgba(0,0,0,0.38), transparent 65%);
+    box-shadow:
+      0 0 0 9px var(--rail), 0 0 0 11px var(--gold),
+      0 0 30px 10px rgba(240,206,126,0.26),
+      0 26px 50px rgba(0,0,0,0.6), inset 0 0 70px rgba(0,0,0,0.42);
+  }
+  .bjx-table::before {
+    content: ''; position: absolute; left: 7%; right: 7%; top: 0; bottom: 8%;
+    border: 2px solid rgba(240,206,126,0.26); border-top: none;
+    border-radius: 0 0 50% 50% / 0 0 100% 100%;
+  }
+  .bjx-table::after {
+    content: "BLACKJACK PAYS 3 TO 2"; position: absolute; left: 0; right: 0; top: 24%;
+    text-align: center; font-family: var(--font-title); font-size: clamp(9px, 2.1vw, 15px);
+    letter-spacing: 0.14em; color: rgba(240,206,126,0.2); pointer-events: none;
+  }
+  .bjx-rule {
+    position: absolute; left: 0; right: 0; top: 33%; text-align: center; z-index: 3;
+    font-size: clamp(8px, 1.6vw, 11px); letter-spacing: 0.12em; text-transform: uppercase;
+    color: rgba(240,206,126,0.28); pointer-events: none;
+  }
+  .bjx-dealer {
+    position: absolute; left: 50%; top: 15%; transform: translateX(-50%); z-index: 4;
+    display: flex; flex-direction: column; align-items: center; gap: 4px; width: 50%;
+  }
+  .bjx-dealer-tag {
+    font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold-bright);
+    background: linear-gradient(180deg, rgba(34,24,12,0.96), rgba(14,10,6,0.96));
+    border: 1px solid var(--gold); border-radius: 999px; padding: 1px 12px;
+  }
+  .bjx-dealer-row { display: flex; align-items: center; gap: 10px; min-height: 62px; }
+  .bjx-total {
+    display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 22px; padding: 0 7px;
+    border-radius: 999px; font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap;
+    color: var(--ink); background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  }
+  .bjx-total.bust { background: var(--red-suit); color: #fff; }
+  .bjx-total.hid { background: rgba(0,0,0,0.55); color: var(--cream-dim); box-shadow: 0 0 0 1px var(--border); }
+  .bjx-hand { display: flex; align-items: center; }
+  .bjx-hand .playing-card { width: 38px; height: 54px; padding: 3px 4px; border-radius: 6px; box-shadow: 0 3px 8px rgba(0,0,0,0.55); }
+  .bjx-hand .playing-card .pc-rank { font-size: 11px; }
+  .bjx-hand .playing-card .pc-suit-big { font-size: 16px; }
+  .bjx-hand .playing-card + .playing-card { margin-left: -16px; }
+  .bjx-hand.dealer .playing-card { width: 44px; height: 62px; }
+  .bjx-hand.dealer .playing-card .pc-rank { font-size: 13px; }
+  .bjx-hand.dealer .playing-card .pc-suit-big { font-size: 19px; }
+  .bjx-hand.dealer .playing-card + .playing-card { margin-left: -8px; }
+  .bjx-seat.is-me .bjx-hand .playing-card { width: 46px; height: 64px; }
+  .bjx-seat.is-me .bjx-hand .playing-card .pc-rank { font-size: 13px; }
+  .bjx-seat.is-me .bjx-hand .playing-card .pc-suit-big { font-size: 20px; }
+  .bjx-seat.is-me .bjx-hand .playing-card + .playing-card { margin-left: -20px; }
+  .bjx-hand.lost { opacity: 0.5; filter: saturate(0.6); }
+  .bjx-handwrap { display: flex; flex-direction: column; align-items: center; gap: 3px; margin-bottom: 2px; }
+  .bjx-seat.won .pk-avatar-wrap .avatar { box-shadow: 0 0 0 3px var(--gold-bright), 0 0 20px 6px rgba(240,206,126,0.7); }
+  .bjx-tag {
+    font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap;
+    border-radius: 999px; padding: 2px 9px; margin-bottom: 2px;
+  }
+  .bjx-tag.gold { background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color: var(--ink); box-shadow: 0 0 12px rgba(240,206,126,0.55); }
+  .bjx-tag.red { background: var(--red-suit); color: #fff; }
+  .bjx-tag.grey { background: rgba(0,0,0,0.6); color: var(--cream); box-shadow: 0 0 0 1px var(--border); }
+  .bjx-plate-bet { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: var(--gold-bright); font-variant-numeric: tabular-nums; }
+  .bjx-plate-bet i { width: 11px; height: 11px; border-radius: 50%; display: inline-block;
+    background: repeating-conic-gradient(var(--gold-bright) 0deg 20deg, var(--red-suit) 20deg 40deg); box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 2.5px var(--card-face); }
+  .bjx-betbar { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 4px; padding: 12px 10px;
+    background: rgba(0,0,0,0.28); border: 1px solid var(--border); border-radius: 16px; }
+  .bjx-betamt { font-size: 14px; color: var(--cream); display: inline-flex; align-items: center; gap: 8px; }
+  .bjx-betamt strong { color: var(--gold-bright); font-size: 18px; font-variant-numeric: tabular-nums; }
+  .bjx-chips { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .bjx-chip {
+    --c: #a3262b; width: 50px; height: 50px; border-radius: 50%; font-size: 13px; font-weight: 800; color: #fff;
+    background: repeating-conic-gradient(var(--card-face) 0deg 12deg, var(--c) 12deg 45deg);
+    border: none; box-shadow: 0 3px 8px rgba(0,0,0,0.55), inset 0 0 0 4px var(--c); position: relative; cursor: pointer;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+  }
+  .bjx-chip:active { transform: translateY(1px) scale(0.97); }
+  .bjx-chip.c5 { --c: #a3262b; } .bjx-chip.c25 { --c: #1f7a4d; } .bjx-chip.c100 { --c: #1c1712; } .bjx-chip.c500 { --c: #6b3fa0; }
+  .bjx-betbtns { display: flex; gap: 8px; }
+  .bjx-betbtns button { padding: 5px 16px; font-size: 12px; font-weight: 700; border-radius: 999px; color: var(--gold-bright);
+    background: rgba(0,0,0,0.35); border: 1px solid var(--border); cursor: pointer; }
+  .bjx-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+  .bjx-actions .btn { flex: 1 1 0; min-width: 96px; max-width: 170px; padding: 13px 10px; font-size: 15px; font-weight: 800; border-radius: 14px; }
+  @media (max-width: 600px) {
+    .bjx-wrap { aspect-ratio: 100 / 160; }
+    .bjx-dealer { width: 70%; }
+    .bjx-hand .playing-card { width: 32px; height: 46px; }
+    .bjx-hand .playing-card + .playing-card { margin-left: -14px; }
+    .bjx-seat.is-me .bjx-hand .playing-card { width: 40px; height: 56px; }
+    .bjx-hand.dealer .playing-card { width: 38px; height: 54px; }
+    .bjx-wrap .pk-seat { width: 64px; }
+    .bjx-wrap .pk-plate { min-width: 56px; max-width: 66px; }
+    .bjx-wrap .pk-avatar-wrap { width: 42px; height: 42px; }
+  }
+
   /* -------------------------------------------------------------------
      Poker — stadium table: skyline backdrop, dealer behind a glowing gold
      rail, seats ringed on the rail, bet chips pushed toward the middle.
@@ -1481,23 +1588,28 @@ function renderBjSeatPos(table, hand, seatIndex, mySeat, totalSeats, animate) {
     // tappable, so you can't end up sitting in more than one at once.
     const sittable = mySeat === -1;
     return `
-      <div class="poker-seat-pos" style="${posStyle}">
-        <div class="poker-empty-seat"${sittable ? ` data-bj-sit-seat="${seatIndex}"` : ''}>${sittable ? 'Sit Here' : ''}</div>
+      <div class="pk-seat bjx-seat" style="${posStyle}">
+        <div class="pk-empty"${sittable ? ` data-bj-sit-seat="${seatIndex}"` : ' style="cursor:default;opacity:0.45;"'}>${sittable ? 'Sit<br>Here' : ''}</div>
       </div>
     `;
   }
 
   const inHand = hand && hand.participantSeats && hand.participantSeats.includes(seatIndex);
   const isMyTurn = hand && hand.currentTurnSeat === seatIndex;
+  const isMe = seatIndex === mySeat;
   const p = inHand ? hand.perSeat[seatIndex] : null;
-  const canEditBet = seatIndex === mySeat && (!hand || hand.phase === 'complete');
 
   const pv = p ? handValue(p.cards) : null;
-  const outcomeLabels = { playerBlackjack: 'BJ! 3:2', push: 'Push', dealerBlackjack: 'Dlr BJ', bust: 'Bust', win: 'Win', lose: 'Lose', dealerBust: 'Win' };
-  const goldOutcomes = ['win', 'dealerBust', 'playerBlackjack'];
-  const outcomeLabel = p && p.outcome ? (outcomeLabels[p.outcome] || p.outcome) : '';
-  const outcomeColor = !outcomeLabel ? 'var(--text-secondary)' : goldOutcomes.includes(p.outcome) ? 'var(--gold-bright)' : p.outcome === 'push' ? 'var(--text-secondary)' : 'var(--red-bright)';
-  const lostLook = p && ['bust', 'lose', 'dealerBlackjack'].includes(p.outcome);
+  const deltas = hand && hand.result && hand.result.deltas;
+  const delta = deltas ? deltas[seatIndex] : null;
+  const gold = p && ['win', 'dealerBust', 'playerBlackjack'].includes(p.outcome);
+  const lost = p && ['bust', 'lose', 'dealerBlackjack'].includes(p.outcome);
+  const labels = { playerBlackjack: 'BJ', push: 'Push', dealerBlackjack: 'Dealer BJ', bust: 'Bust', win: 'Win', lose: 'Lose', dealerBust: 'Win' };
+  let tagHtml = '';
+  if (p && p.outcome) {
+    const money = delta ? ` ${delta > 0 ? '+' : '−'}${Math.abs(delta)}` : '';
+    tagHtml = `<div class="bjx-tag ${gold ? 'gold' : lost ? 'red' : 'grey'}">${escapeHtml(labels[p.outcome] || p.outcome)}${hand.phase === 'complete' ? money : ''}</div>`;
+  }
 
   let timerHtml = '';
   if (isMyTurn && hand.turnStartedAt) {
@@ -1507,26 +1619,25 @@ function renderBjSeatPos(table, hand, seatIndex, mySeat, totalSeats, animate) {
     timerHtml = `<div class="poker-timer-ring" style="--pct:${pct.toFixed(3)}"></div><div class="poker-timer-badge">${seconds}</div>`;
   }
 
+  const fly = bjDealFlyStyle(visualIndex, totalSeats);
+  const handHtml = p ? `
+    <div class="bjx-handwrap">
+      ${tagHtml}
+      <div class="bjx-hand${lost ? ' lost' : ''}">${p.cards.map((c, i) => cardHtml(c, false, animate, visualIndex * 2 + i, fly)).join('')}</div>
+      <span class="bjx-total${pv.total > 21 ? ' bust' : ''}">${pv.isSoft && pv.total <= 21 ? 'soft ' : ''}${pv.total}</span>
+    </div>` : '';
+
   return `
-    <div class="poker-seat-pos${isMyTurn ? ' my-turn' : ''}${lostLook ? ' folded' : ''}" style="${posStyle}">
-      <div class="poker-seat-avatar-wrap">
+    <div class="pk-seat bjx-seat${isMyTurn ? ' my-turn' : ''}${isMe ? ' is-me' : ''}${gold ? ' won' : ''}" style="${posStyle}">
+      ${handHtml}
+      <div class="pk-avatar-wrap">
         ${timerHtml}
-        ${avatarHtml(seat.name, seat.photoURL, 50)}
+        ${avatarHtml(seat.name, seat.photoURL, 52)}
       </div>
-      <div class="poker-seat-name">${escapeHtml(seat.name)}${seatIndex === mySeat ? ' (you)' : ''}</div>
-      ${canEditBet ? `
-        <div style="display:flex;align-items:center;gap:3px;">
-          <button class="btn btn-ghost btn-sm" data-bj-bet-delta="-25" style="padding:1px 6px;font-size:11px;">−</button>
-          <span class="poker-seat-chips">Bet ${seat.bet || 0}</span>
-          <button class="btn btn-ghost btn-sm" data-bj-bet-delta="25" style="padding:1px 6px;font-size:11px;">+</button>
-        </div>
-      ` : `<div class="poker-seat-chips">Bet ${p ? p.bet : (seat.bet || 0)}</div>`}
-      ${p ? `
-        <div class="poker-seat-cards">${p.cards.map((c, i) => cardHtml(c, false, animate, visualIndex * 2 + i, bjDealFlyStyle(visualIndex, totalSeats))).join('')}</div>
-        <div style="font-size:11px;color:${outcomeColor};font-weight:600;white-space:nowrap;">
-          ${pv ? `${pv.total}${pv.isSoft ? ' (soft)' : ''}` : ''}${outcomeLabel ? ` — ${escapeHtml(outcomeLabel)}` : ''}
-        </div>
-      ` : ''}
+      <div class="pk-plate">
+        <div class="pk-name">${escapeHtml(seat.name)}${isMe ? ' (you)' : ''}</div>
+        <div class="bjx-plate-bet"><i></i>${p ? p.bet : (seat.bet || 0)}</div>
+      </div>
     </div>
   `;
 }
@@ -1565,15 +1676,19 @@ function renderBlackjackScreen() {
         <span class="chip-icon"></span>${state.chips ?? 0} chips
       </div>
 
-      <div class="bj-half-wrap">
-        <div class="bj-dealer-area">
-          <div style="font-family:var(--font-display);color:var(--cream-dim);font-size:12px;letter-spacing:0.03em;">Dealer</div>
+      <div class="bjx-wrap">
+        <div class="pk-room">${PK_SKYLINE_SVG}</div>
+        <div class="bjx-table"></div>
+        <div class="bjx-rule">Dealer stands on all 17s</div>
+        <div class="bjx-dealer">
+          <span class="bjx-dealer-tag">Dealer</span>
           ${hand ? `
-            <div class="hand-row">${hand.dealerCards.map((c, i) => cardHtml(c, i === 1 && !dealerDone, animate, dealerCardDelayBase + i)).join('')}</div>
-            <div class="poker-pot-badge">${dealerDone ? dv.total : '?'}</div>
-          ` : `<div style="color:var(--text-tertiary);font-size:12px;">No hand in progress</div>`}
+            <div class="bjx-dealer-row">
+              <div class="bjx-hand dealer">${hand.dealerCards.map((c, i) => cardHtml(c, i === 1 && !dealerDone, animate, dealerCardDelayBase + i)).join('')}</div>
+              <span class="bjx-total${dealerDone && dv.total > 21 ? ' bust' : (dealerDone ? '' : ' hid')}">${dealerDone ? dv.total : '?'}</span>
+            </div>
+          ` : `<div style="color:var(--cream-dim);font-size:12px;min-height:30px;padding-top:8px;">Place your bets</div>`}
         </div>
-        <div class="bj-half-felt"></div>
         ${Array.from({ length: totalSeats }, (_, i) => renderBjSeatPos(table, hand, i, mySeat, totalSeats, animate)).join('')}
       </div>
 
@@ -1581,14 +1696,19 @@ function renderBlackjackScreen() {
         <p style="text-align:center;color:var(--text-tertiary);font-size:13px;">Tap an empty seat above to sit down.</p>
       ` : canDeal ? `
         ${anyBets ? autoStatusHtml('bj') : '<p style="text-align:center;color:var(--text-tertiary);font-size:13px;margin:6px 0 2px;">Set a bet and the dealer will deal.</p>'}
+        <div class="bjx-betbar">
+          <div class="bjx-betamt"><span class="chip-icon"></span>Your bet <strong>${table.seats[mySeat] ? (table.seats[mySeat].bet || 0) : 0}</strong></div>
+          <div class="bjx-chips">${[5, 25, 100, 500].map(v => `<button class="bjx-chip c${v}" data-bj-bet-delta="${v}">${v}</button>`).join('')}</div>
+          <div class="bjx-betbtns"><button data-bj-bet-delta="-99999">Clear</button><button data-bj-bet-delta="99999">Max</button></div>
+        </div>
         ${(state.chips ?? 0) === 0 ? `<button class="btn btn-ghost btn-sm btn-block" id="bj-get-chips" style="margin-top:10px;">Get More Chips</button>` : ''}
       ` : ''}
 
       ${mySeat !== -1 && hand && hand.currentTurnSeat === mySeat ? `
-        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px;">
+        <div class="bjx-actions">
           <button class="btn btn-secondary" id="bj-hit">Hit</button>
-          <button class="btn btn-secondary" id="bj-stand">Stand</button>
-          <button class="btn btn-primary" id="bj-double" ${!myLegal?.canDouble ? 'disabled' : ''}>Double Down</button>
+          <button class="btn btn-danger" id="bj-stand">Stand</button>
+          <button class="btn btn-primary" id="bj-double" ${!myLegal?.canDouble ? 'disabled' : ''}>Double</button>
         </div>
       ` : ''}
 

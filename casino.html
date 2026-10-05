@@ -896,6 +896,98 @@ function handValue(cards) {
 // blackjack, double-down, turn order) plus 489 fully randomized simulated
 // hands across 1-6 seats checking chip-delta correctness.
 // ============================================================================
+
+// ============================================================================
+// Auto-deal + idle stand-up (both tables). No Deal button: once enough people
+// are seated (Poker: 2, Blackjack: 1) a short countdown runs after the last
+// result and one of the seated players' clients deals the next hand (the
+// existing deal transaction already makes sure only one of them wins the race).
+// If someone lets their 15s turn timer run out, the table records it on the
+// hand (`timedOutSeats`) and they're stood up once the hand is over.
+// ============================================================================
+const AUTO_DEAL_AFTER_RESULT_MS = 7000; // lets everyone read the win banner
+const AUTO_DEAL_AFTER_SIT_MS = 4000;    // lets Blackjack players pick a bet
+const AUTO_KICK_AFTER_RESULT_MS = 3000;
+const autoState = {
+  poker: { completeKey: null, completeAt: 0, eligibleSince: null, lastAttempt: 0, kickedHand: null },
+  bj:    { completeKey: null, completeAt: 0, eligibleSince: null, lastAttempt: 0, kickedHand: null },
+};
+function autoMarkTimedOut(hand, seat) {
+  if (!hand.timedOutSeats) hand.timedOutSeats = [];
+  if (!hand.timedOutSeats.includes(seat)) hand.timedOutSeats.push(seat);
+}
+function autoJitterMs() {
+  // Different clients try at slightly different moments so they don't all
+  // fire the same deal transaction at once.
+  const uid = (state.user && state.user.uid) || '';
+  let h = 0; for (const ch of uid) h = (h * 31 + ch.charCodeAt(0)) % 1500;
+  return h;
+}
+// Returns null while a hand is in progress; {waiting:true} if not enough
+// players; otherwise {readyAt, secondsLeft, kicked:Set}. Safe to call every
+// render — it only records "when did I first see this" timestamps.
+function autoDealInfo(kind) {
+  const isPoker = kind === 'poker';
+  const a = autoState[kind];
+  const table = isPoker ? state.poker.table : state.bj.table;
+  if (!table) return null;
+  const hand = table.hand;
+  const inProgress = hand && (isPoker ? hand.street !== 'complete' : hand.phase !== 'complete');
+  if (inProgress) { a.eligibleSince = null; return null; }
+  const key = hand ? 'h' + hand.handNumber : 'none';
+  if (a.completeKey !== key) { a.completeKey = key; a.completeAt = hand ? Date.now() : 0; a.eligibleSince = null; }
+  const kicked = new Set((hand && hand.timedOutSeats) || []);
+  const eligible = table.seats.map((s, i) => (s && !kicked.has(i)) ? i : null).filter(i => i !== null);
+  const need = isPoker ? 2 : 1;
+  if (eligible.length < need) { a.eligibleSince = null; return { waiting: true, need: need - eligible.length, kicked }; }
+  if (a.eligibleSince == null) a.eligibleSince = Date.now();
+  const readyAt = Math.max(a.completeAt + AUTO_DEAL_AFTER_RESULT_MS, a.eligibleSince + AUTO_DEAL_AFTER_SIT_MS);
+  return { waiting: false, readyAt, secondsLeft: Math.max(0, Math.ceil((readyAt - Date.now()) / 1000)), kicked };
+}
+function autoStatusHtml(kind) {
+  const info = autoDealInfo(kind);
+  if (!info) return '';
+  const msg = info.waiting
+    ? (kind === 'poker' ? `Waiting for ${info.need === 2 ? 'players' : 'one more player'} — the dealer starts as soon as two are seated.` : '')
+    : `Next hand in ${info.secondsLeft}s…`;
+  if (!msg) return '';
+  return `<p style="text-align:center;color:var(--gold-bright);font-size:13px;margin:6px 0 2px;">${msg}</p>`;
+}
+function autoTableTick() {
+  const kind = state.screen === 'poker' ? 'poker' : state.screen === 'blackjack' ? 'bj' : null;
+  if (!kind || !state.user) return;
+  const isPoker = kind === 'poker';
+  const table = isPoker ? state.poker.table : state.bj.table;
+  if (!table) return;
+  const mySeat = isPoker ? myPokerSeatIndex() : myBjSeatIndex();
+  const a = autoState[kind];
+  const hand = table.hand;
+  const info = autoDealInfo(kind);
+  if (!info) return;
+
+  // 1) Idle stand-up: I let my turn timer run out in the hand that just ended.
+  if (mySeat !== -1 && hand && info.kicked.has(mySeat) && a.kickedHand !== hand.handNumber &&
+      Date.now() - a.completeAt >= AUTO_KICK_AFTER_RESULT_MS) {
+    a.kickedHand = hand.handNumber;
+    (isPoker ? pokerStandUp() : bjtStandUp()).then(() => {
+      const st = isPoker ? state.poker : state.bj;
+      st.lastError = 'You were stood up because your turn timed out.';
+      render();
+    });
+    return;
+  }
+
+  // 2) Auto-deal: only seated, non-idle players deal, with a cooldown so a
+  // table that can't start (e.g. nobody has chips) isn't hammered.
+  if (info.waiting || mySeat === -1 || info.kicked.has(mySeat)) { if (info.waiting) render(); return; }
+  if (Date.now() >= info.readyAt + autoJitterMs() && Date.now() - a.lastAttempt >= 5000) {
+    a.lastAttempt = Date.now();
+    if (isPoker) pokerStartNextHand(); else bjtStartNextHand();
+  }
+  render();
+}
+setInterval(autoTableTick, 1000);
+
 const BJ_TABLE_ID = 'main';
 const BJ_TURN_LIMIT_MS = 15000; // 15s per turn, same as Poker — see bjTurnTimerTick below
 
@@ -961,7 +1053,7 @@ function bjTurnTimerTick() {
   const overdue = Date.now() - hand.turnStartedAt >= BJ_TURN_LIMIT_MS;
   if (overdue) {
     const mySeat = myBjSeatIndex();
-    if (hand.currentTurnSeat === mySeat) bjtSendAction('stand');
+    if (hand.currentTurnSeat === mySeat) bjtSendAction('stand', true);
   }
   if (overdue && myBjRunningHand && myBjRunningHand.phase === 'playerTurns' && myBjRunningHand.handNumber === hand.handNumber) {
     const seat = myBjRunningHand.currentTurnSeat;
@@ -969,6 +1061,7 @@ function bjTurnTimerTick() {
         && myBjRunningHand.turnStartedAt && Date.now() - myBjRunningHand.turnStartedAt >= BJ_TURN_LIMIT_MS) {
       try {
         bjtApplyAction(myBjRunningHand, seat, 'stand');
+        autoMarkTimedOut(myBjRunningHand, seat);
         db.collection('blackjackTables').doc(BJ_TABLE_ID).update({
           hand: bjtHandForFirestore(myBjRunningHand), requestedAction: null,
         }).catch(e => console.error('blackjack timeout write failed', e));
@@ -1166,8 +1259,11 @@ function bjtHandForFirestore(hand) {
 // ----------------------------------------------------------------------------
 async function bjtStartNextHand() {
   try {
-    const table = state.bj.table;
+    let table = state.bj.table;
     if (!table) return;
+    // Anyone who timed out in the last hand is dropped from the table here.
+    const kickedBj = new Set((table.hand && table.hand.timedOutSeats) || []);
+    if (kickedBj.size) table = { ...table, seats: table.seats.map((s, i) => kickedBj.has(i) ? null : s) };
     const seatedIdx = bjtOccupiedSeats(table);
     if (seatedIdx.length === 0) return;
 
@@ -1228,6 +1324,7 @@ function maybeRunBjHandLogic() {
     lastProcessedBjActionId = req.actionId;
     try {
       bjtApplyAction(myBjRunningHand, req.seat, req.type);
+      if (req.timedOut) autoMarkTimedOut(myBjRunningHand, req.seat);
     } catch (e) {
       console.error('blackjack action rejected', e.message);
     }
@@ -1301,9 +1398,15 @@ async function bjtStandUp() {
     const mySeat = myBjSeatIndex();
     if (!table || mySeat === -1) return;
     if (table.hand && table.hand.phase !== 'complete') return; // can't leave mid-hand
-    const seats = table.seats.slice();
-    seats[mySeat] = null;
-    await db.collection('blackjackTables').doc(BJ_TABLE_ID).update({ seats });
+    const ref = db.collection('blackjackTables').doc(BJ_TABLE_ID);
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) return;
+      const cur = snap.data();
+      if (cur.hand && cur.hand.phase !== 'complete') return; // never mid-hand
+      const seats = cur.seats.map(s => (s && s.authUID === state.user.uid) ? null : s);
+      tx.update(ref, { seats });
+    });
     state.bj.lastError = null;
   } catch (e) {
     console.error('bjtStandUp failed', e);
@@ -1327,14 +1430,14 @@ async function bjtSetBet(amount) {
     render();
   }
 }
-async function bjtSendAction(type) {
+async function bjtSendAction(type, timedOut) {
   try {
     const table = state.bj.table;
     const mySeat = myBjSeatIndex();
     if (!table || !table.hand || table.hand.currentTurnSeat !== mySeat) return;
     if (type === 'stand') Sound.fold(); else { Sound.chip(); Sound.cardFlick(0.05); }
     await db.collection('blackjackTables').doc(BJ_TABLE_ID).update({
-      requestedAction: { authUID: state.user.uid, seat: mySeat, type, handNumber: table.hand.handNumber, actionId: Math.random().toString(36).slice(2) },
+      requestedAction: { authUID: state.user.uid, seat: mySeat, type, timedOut: !!timedOut, handNumber: table.hand.handNumber, actionId: Math.random().toString(36).slice(2) },
     });
     state.bj.lastError = null;
   } catch (e) {
@@ -1477,7 +1580,7 @@ function renderBlackjackScreen() {
       ${mySeat === -1 ? `
         <p style="text-align:center;color:var(--text-tertiary);font-size:13px;">Tap an empty seat above to sit down.</p>
       ` : canDeal ? `
-        <button class="btn btn-primary btn-block" id="bj-deal" ${!anyBets ? 'disabled' : ''}>Deal Next Hand</button>
+        ${anyBets ? autoStatusHtml('bj') : '<p style="text-align:center;color:var(--text-tertiary);font-size:13px;margin:6px 0 2px;">Set a bet and the dealer will deal.</p>'}
         ${(state.chips ?? 0) === 0 ? `<button class="btn btn-ghost btn-sm btn-block" id="bj-get-chips" style="margin-top:10px;">Get More Chips</button>` : ''}
       ` : ''}
 
@@ -1524,7 +1627,6 @@ function attachBlackjackHandlers() {
     bjtSetBet(Math.min((state.chips ?? 0), Math.max(0, current + delta)));
   }));
   document.getElementById('bj-get-chips')?.addEventListener('click', resetChips);
-  document.getElementById('bj-deal')?.addEventListener('click', () => { bjtStartNextHand(); });
   document.getElementById('bj-hit')?.addEventListener('click', () => bjtSendAction('hit'));
   document.getElementById('bj-stand')?.addEventListener('click', () => bjtSendAction('stand'));
   document.getElementById('bj-double')?.addEventListener('click', () => bjtSendAction('double'));
@@ -1685,7 +1787,7 @@ function pokerTurnTimerTick() {
     const mySeat = myPokerSeatIndex();
     if (hand.currentTurnSeat === mySeat) {
       const legal = pokerLegalActions(hand, mySeat);
-      if (legal) pokerSendAction(legal.canCheck ? 'check' : 'fold');
+      if (legal) pokerSendAction(legal.canCheck ? 'check' : 'fold', undefined, true);
     }
   }
   if (overdue && myRunningHand && myRunningHand.street !== 'complete' && myRunningHand.handNumber === hand.handNumber) {
@@ -1695,6 +1797,7 @@ function pokerTurnTimerTick() {
       if (legal) {
         try {
           pokerApplyAction(myRunningHand, seat, legal.canCheck ? 'check' : 'fold');
+          autoMarkTimedOut(myRunningHand, seat);
           if (myRunningHand.street === 'showdown') pokerFinishShowdown(myRunningHand, myRunningHoleCards);
           db.collection('pokerTables').doc(POKER_TABLE_ID).update({
             hand: pokerHandForFirestore(myRunningHand), requestedAction: null,
@@ -1959,8 +2062,11 @@ function pokerHandForFirestore(hand) {
 // ----------------------------------------------------------------------------
 async function pokerStartNextHand() {
   try {
-    const table = state.poker.table;
+    let table = state.poker.table;
     if (!table) return;
+    // Anyone who timed out in the last hand is dropped from the table here.
+    const kickedPk = new Set((table.hand && table.hand.timedOutSeats) || []);
+    if (kickedPk.size) table = { ...table, seats: table.seats.map((s, i) => kickedPk.has(i) ? null : s) };
     const seatedIdx = pokerOccupiedSeats(table);
     if (seatedIdx.length < 2) return;
 
@@ -2031,6 +2137,7 @@ function maybeRunHandLogic() {
     lastProcessedActionId = req.actionId;
     try {
       pokerApplyAction(myRunningHand, req.seat, req.type, req.amount);
+      if (req.timedOut) autoMarkTimedOut(myRunningHand, req.seat);
     } catch (e) {
       console.error('poker action rejected', e.message);
       state.poker.lastError = `That action was rejected: ${e.message}`;
@@ -2101,9 +2208,15 @@ async function pokerStandUp() {
     const mySeat = myPokerSeatIndex();
     if (!table || mySeat === -1) return;
     if (table.hand && table.hand.street !== 'complete') return; // can't leave mid-hand
-    const seats = table.seats.slice();
-    seats[mySeat] = null;
-    await db.collection('pokerTables').doc(POKER_TABLE_ID).update({ seats });
+    const ref = db.collection('pokerTables').doc(POKER_TABLE_ID);
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) return;
+      const cur = snap.data();
+      if (cur.hand && cur.hand.street !== 'complete') return; // never mid-hand
+      const seats = cur.seats.map(s => (s && s.authUID === state.user.uid) ? null : s);
+      tx.update(ref, { seats });
+    });
     state.poker.lastError = null;
   } catch (e) {
     console.error('pokerStandUp failed', e);
@@ -2111,14 +2224,14 @@ async function pokerStandUp() {
     render();
   }
 }
-async function pokerSendAction(type, amount) {
+async function pokerSendAction(type, amount, timedOut) {
   try {
     const table = state.poker.table;
     const mySeat = myPokerSeatIndex();
     if (!table || !table.hand || table.hand.currentTurnSeat !== mySeat) return;
     if (type === 'fold') Sound.fold(); else Sound.chip();
     await db.collection('pokerTables').doc(POKER_TABLE_ID).update({
-      requestedAction: { authUID: state.user.uid, seat: mySeat, type, amount: amount ?? null, handNumber: table.hand.handNumber, actionId: Math.random().toString(36).slice(2) },
+      requestedAction: { authUID: state.user.uid, seat: mySeat, type, amount: amount ?? null, timedOut: !!timedOut, handNumber: table.hand.handNumber, actionId: Math.random().toString(36).slice(2) },
     });
     state.poker.lastError = null;
   } catch (e) {
@@ -2396,9 +2509,7 @@ function renderPokerScreen() {
       <div class="pk-actionbar">
         ${mySeat === -1 ? `
           <p style="text-align:center;color:var(--text-tertiary);font-size:13px;">Tap an empty seat above to sit down.</p>
-        ` : canDeal ? `
-          <button class="btn btn-primary btn-block" id="poker-deal">Deal Next Hand</button>
-        ` : ''}
+        ` : canDeal || !handLive ? autoStatusHtml('poker') : ''}
 
         ${myTurn ? renderPokerActionControls(hand, mySeat) : ''}
         ${canPreAct ? renderPokerPreActions(hand, mySeat) : ''}
@@ -2559,7 +2670,6 @@ function attachPokerHandlers() {
   document.querySelectorAll('[data-sit-seat]').forEach(el => el.addEventListener('click', () => {
     pokerSitDown(parseInt(el.dataset.sitSeat, 10));
   }));
-  document.getElementById('poker-deal')?.addEventListener('click', () => { pokerStartNextHand(); });
   document.getElementById('poker-stand-up')?.addEventListener('click', () => { pokerStandUp(); });
   document.getElementById('poker-reset')?.addEventListener('click', () => { pokerResetTable(); });
   document.getElementById('poker-fold')?.addEventListener('click', () => pokerSendAction('fold'));

@@ -1679,7 +1679,7 @@ function renderBlackjackScreen() {
 
   return `
     <div class="topbar">
-      <h1 class="page-title">Blackjack</h1>
+      <h1 class="page-title casino-title" style="font-size:24px;">Blackjack</h1>
       <div style="display:flex;align-items:center;gap:8px;">
         <button class="sound-toggle" id="bj-sound-toggle" title="${Sound.enabled ? 'Mute sound' : 'Unmute sound'}">${Sound.enabled ? '🔊' : '🔇'}</button>
         <button class="btn btn-ghost btn-sm" id="bj-done">Done</button>
@@ -2627,7 +2627,7 @@ function renderPokerScreen() {
 
   return `
     <div class="topbar">
-      <h1 class="page-title">Texas Hold'em</h1>
+      <h1 class="page-title casino-title" style="font-size:24px;">Texas Hold'em</h1>
       <div style="display:flex;align-items:center;gap:8px;">
         <button class="sound-toggle" id="poker-sound-toggle" title="${Sound.enabled ? 'Mute sound' : 'Unmute sound'}">${Sound.enabled ? '🔊' : '🔇'}</button>
         <button class="btn btn-ghost btn-sm" id="poker-done">Done</button>

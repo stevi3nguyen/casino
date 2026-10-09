@@ -1038,6 +1038,266 @@
   .cr-chip { width: 54px; height: 54px; font-size: 14px; }
 }
 
+
+/* ===== Slots ===== */
+/* ===== Slots ("Gilded Reels") — all selectors prefixed .sl- ===== */
+.sl-sprite { position: absolute; width: 0; height: 0; overflow: hidden; pointer-events: none; }
+
+.sl-topbar { flex-wrap: nowrap; padding: 14px 12px 4px; gap: 8px; }
+.sl-title { font-size: 22px; min-width: 0; text-align: center; flex: 1 1 auto; white-space: nowrap; }
+.sl-top-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.sl-content { max-width: 600px; padding: 0 8px 40px; overflow-x: hidden; }
+.sl-layout { display: block; }
+.sl-main { min-width: 0; }
+.sl-side-col { min-width: 0; margin-top: 18px; }
+
+.sl-error {
+  background: rgba(200,60,60,0.15); border: 1px solid var(--red-bright); border-radius: 10px;
+  padding: 10px 12px; margin: 6px 4px 12px; font-size: 12px; color: var(--red-bright);
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+
+/* ---------- cabinet ---------- */
+.sl-machine {
+  --sl-cell: clamp(58px, 20.5vw, 94px);
+  position: relative; margin: 10px 8px 0; padding: 12px 12px 14px;
+  border-radius: 26px 26px 16px 16px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255,210,140,0.16), transparent 55%),
+    linear-gradient(180deg, #741626 0%, #4d0d1a 55%, #35080f 100%);
+  box-shadow:
+    0 0 0 3px #d9a93f, 0 0 0 6px #2a0a0f, 0 0 0 7px var(--gold),
+    0 18px 40px rgba(0,0,0,0.6), inset 0 0 0 2px rgba(240,206,126,0.28), inset 0 -30px 50px rgba(0,0,0,0.35);
+}
+.sl-machine::after { /* win glow ring */
+  content: ''; position: absolute; inset: -10px; border-radius: 34px; pointer-events: none; opacity: 0;
+  box-shadow: 0 0 34px 8px rgba(255,210,90,0.85), inset 0 0 22px 2px rgba(255,210,90,0.4);
+}
+.sl-machine.sl-glow::after { animation: sl-glow 0.5s ease-in-out 5 alternate both; animation-delay: var(--sl-wdl, 0ms); }
+@keyframes sl-glow { from { opacity: 0.1; } to { opacity: 1; } }
+
+/* marquee of chasing lights */
+.sl-marquee { display: flex; justify-content: space-between; align-items: center; padding: 0 6px 9px; }
+.sl-bulb {
+  display: block; width: 9px; height: 9px; border-radius: 50%;
+  background: #5b3a10; box-shadow: inset 0 -1px 2px rgba(0,0,0,0.6);
+  animation: sl-chase 1.2s linear infinite;
+  animation-delay: calc((var(--sl-ph, 0) + var(--k, 0) * 400) * -1ms);
+}
+@keyframes sl-chase {
+  0%, 33% { background: #fff1b0; box-shadow: 0 0 7px 2px #ffd25a, 0 0 14px 3px rgba(255,190,60,0.55); }
+  34%, 100% { background: #5b3a10; box-shadow: inset 0 -1px 2px rgba(0,0,0,0.6); }
+}
+.sl-machine.sl-glow .sl-bulb, .sl-machine.sl-busy .sl-bulb { animation-duration: 0.45s; }
+.sl-machine.sl-glow .sl-bulb { animation-delay: calc(var(--k, 0) * -150ms); }
+
+/* art-deco title plaque */
+.sl-plaque {
+  position: relative; display: flex; align-items: center; justify-content: center; margin: 0 22px 10px; height: 38px;
+  border-radius: 6px 6px 18px 18px;
+  background:
+    repeating-conic-gradient(from 270deg at 50% 130%, rgba(240,206,126,0.20) 0deg 4deg, rgba(240,206,126,0) 4deg 8deg),
+    linear-gradient(180deg, #2c0710, #19040a);
+  border: 1px solid var(--gold); box-shadow: inset 0 0 0 2px #1a0509, inset 0 0 0 3px rgba(240,206,126,0.45), 0 2px 6px rgba(0,0,0,0.5);
+}
+.sl-plaque span {
+  font-family: var(--font-title); font-weight: 700; font-size: 17px; letter-spacing: 0.2em; text-transform: uppercase;
+  background: linear-gradient(175deg, #fdedbb 0%, var(--gold-bright) 40%, var(--gold) 70%, #a87a2c 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent; white-space: nowrap;
+}
+.sl-plaque::before, .sl-plaque::after {
+  content: ''; position: absolute; top: 50%; width: 14px; height: 14px; margin-top: -7px; transform: rotate(45deg);
+  background: linear-gradient(135deg, var(--gold-bright), #a87a2c); border-radius: 2px;
+}
+.sl-plaque::before { left: -8px; } .sl-plaque::after { right: -8px; }
+
+/* reel window */
+.sl-window {
+  position: relative; padding: 8px; border-radius: 14px;
+  background: linear-gradient(180deg, #1f120a, #0a0604);
+  box-shadow: inset 0 0 0 2px var(--gold), inset 0 6px 14px rgba(0,0,0,0.8), 0 0 0 3px #2a0a0f, 0 2px 0 3px rgba(240,206,126,0.18);
+}
+.sl-reels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.sl-reel {
+  position: relative; overflow: hidden; border-radius: 8px; height: calc(var(--sl-cell) * 3);
+  background: linear-gradient(90deg, #d5c7a0 0%, #f6edd4 16%, #fffaf0 50%, #f6edd4 84%, #d5c7a0 100%);
+  box-shadow: inset 0 0 16px rgba(70,45,10,0.55);
+}
+.sl-reel::after { /* dim the rows above/below the payline + glass sheen */
+  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 2;
+  background:
+    linear-gradient(180deg, rgba(25,10,4,0.55) 0, rgba(25,10,4,0.55) 33.2%, rgba(25,10,4,0) 33.4%, rgba(25,10,4,0) 66.6%, rgba(25,10,4,0.55) 66.8%, rgba(25,10,4,0.55) 100%),
+    linear-gradient(180deg, rgba(0,0,0,0.35), transparent 22%, transparent 78%, rgba(0,0,0,0.35));
+}
+.sl-strip { display: block; will-change: transform; }
+.sl-cell { display: block; width: 100%; height: var(--sl-cell); }
+.sl-ico { display: block; width: 26px; height: 26px; flex-shrink: 0; }
+
+/* The rolling strip. --sl-from/--sl-to are cell indices (middle row), --sl-dl a
+   NEGATIVE delay = time already elapsed, so a re-render mid-spin continues the
+   animation instead of restarting it. */
+.sl-strip.sl-rolling {
+  transform: translateY(calc(var(--sl-cell) * var(--sl-to)));
+  animation: sl-spin var(--sl-dur) both; animation-delay: var(--sl-dl, 0ms);
+}
+@keyframes sl-spin {
+  0%   { transform: translateY(calc(var(--sl-cell) * var(--sl-from))); animation-timing-function: cubic-bezier(.3, .02, .72, .98); }
+  80%  { transform: translateY(calc(var(--sl-cell) * (var(--sl-to) - 0.2))); animation-timing-function: ease-in-out; }
+  91%  { transform: translateY(calc(var(--sl-cell) * (var(--sl-to) + 0.06))); animation-timing-function: ease-in-out; }
+  100% { transform: translateY(calc(var(--sl-cell) * var(--sl-to))); }
+}
+/* Motion blur: a cheap window-sized overlay (not a filter on the 140-cell strip). */
+.sl-fx {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0;
+  background: repeating-linear-gradient(180deg, rgba(255,250,235,0.5) 0 5px, rgba(255,250,235,0.08) 5px 11px);
+  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+  animation: sl-blurfx var(--sl-dur) linear both; animation-delay: var(--sl-dl, 0ms);
+}
+@keyframes sl-blurfx { 0% { opacity: 0; } 9% { opacity: 1; } 70% { opacity: 1; } 80%, 100% { opacity: 0; } }
+
+/* payline + arrows */
+.sl-payline {
+  position: absolute; left: 3px; right: 3px; top: 50%; height: 2px; margin-top: -1px; z-index: 3; pointer-events: none;
+  background: rgba(216,75,69,0.9); box-shadow: 0 0 6px rgba(216,75,69,0.85);
+}
+.sl-arrow { position: absolute; top: 50%; width: 0; height: 0; margin-top: -7px; z-index: 3; border: 7px solid transparent; }
+.sl-arrow.l { left: 0; border-left: 8px solid var(--gold-bright); border-right: 0; }
+.sl-arrow.r { right: 0; border-right: 8px solid var(--gold-bright); border-left: 0; }
+.sl-win .sl-payline { background: #ffe9a0; box-shadow: 0 0 12px 2px #ffd25a; animation: sl-pl 0.45s ease-in-out 8 alternate both; animation-delay: var(--sl-wdl, 0ms); }
+@keyframes sl-pl { from { opacity: 0.45; } to { opacity: 1; } }
+.sl-cell.sl-hit { filter: drop-shadow(0 0 7px rgba(255,190,40,0.95)); transform-origin: 50% 50%; animation: sl-hitpop 0.5s ease-in-out 6 alternate both; animation-delay: var(--sl-wdl, 0ms); }
+@keyframes sl-hitpop { from { transform: scale(0.96); } to { transform: scale(1.1); } }
+
+/* win flash + BIG WIN banner */
+.sl-flash {
+  position: absolute; left: 50%; top: 50%; z-index: 5; pointer-events: none; text-align: center; white-space: nowrap;
+  padding: 10px 26px 12px; transform: translate(-50%, -50%);
+  background: radial-gradient(ellipse at center, rgba(20,5,8,0.92) 35%, rgba(20,5,8,0.78) 68%, rgba(20,5,8,0) 100%);
+  border-radius: 24px; animation: sl-flashlife var(--sl-life, 2400ms) both; animation-delay: var(--sl-wdl, 0ms);
+}
+@keyframes sl-flashlife {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  8%   { opacity: 1; transform: translate(-50%, -50%) scale(1.12); }
+  14%  { transform: translate(-50%, -50%) scale(1); }
+  86%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.05); }
+}
+.sl-flash-t, .sl-flash-n { position: relative; }
+.sl-flash-t { font-family: var(--font-title); font-weight: 900; font-size: 20px; letter-spacing: 0.18em; color: var(--gold-bright); text-shadow: 0 2px 0 #7a4a00, 0 0 14px rgba(255,200,70,0.8); }
+.sl-flash-n { font-family: var(--font-display); font-weight: 800; font-size: 34px; line-height: 1.1; color: #fff3c4; text-shadow: 0 2px 0 #7a4a00, 0 0 18px rgba(255,200,70,0.9); font-variant-numeric: tabular-nums; }
+.sl-flash-x { position: relative; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cream-dim); margin-top: 2px; }
+.sl-flash.big { padding: 18px 30px 20px; }
+.sl-flash.big .sl-flash-t { font-size: 30px; color: #ffe27a; animation: sl-bigpulse 0.4s ease-in-out infinite alternate; }
+.sl-flash.big .sl-flash-n { font-size: 44px; }
+@keyframes sl-bigpulse { from { transform: scale(1); } to { transform: scale(1.08); } }
+.sl-rays {
+  position: absolute; left: 50%; top: 50%; width: 330px; height: 330px; margin: -165px 0 0 -165px; z-index: -1; border-radius: 50%;
+  background: repeating-conic-gradient(rgba(255,214,90,0.5) 0deg 9deg, rgba(255,214,90,0) 9deg 20deg);
+  -webkit-mask: radial-gradient(circle, #000 12%, transparent 68%); mask: radial-gradient(circle, #000 12%, transparent 68%);
+  animation: sl-rays 6s linear infinite;
+}
+@keyframes sl-rays { to { transform: rotate(360deg); } }
+
+/* message + LED readouts */
+.sl-msg { margin: 11px 4px 9px; text-align: center; min-height: 20px; font-family: var(--font-display); font-weight: 700; font-size: 15px; color: var(--cream); letter-spacing: 0.02em; }
+.sl-msg.win { color: var(--gold-bright); text-shadow: 0 0 10px rgba(255,200,70,0.6); }
+.sl-leds { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.sl-led { background: #120604; border: 1px solid rgba(240,206,126,0.4); border-radius: 8px; padding: 5px 4px 6px; text-align: center; box-shadow: inset 0 2px 6px rgba(0,0,0,0.8); min-width: 0; }
+.sl-led span { display: block; font-size: 9px; font-weight: 700; letter-spacing: 0.1em; color: var(--text-tertiary); }
+.sl-led b { display: block; font-size: 16px; font-variant-numeric: tabular-nums; color: #ffcf5c; text-shadow: 0 0 6px rgba(255,170,40,0.55); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sl-led b.up { color: #7be3a1; text-shadow: 0 0 6px rgba(80,220,140,0.5); }
+.sl-led b.down { color: var(--red-bright); text-shadow: 0 0 6px rgba(216,75,69,0.5); }
+
+/* ---------- controls ---------- */
+.sl-bets { display: flex; justify-content: center; gap: clamp(6px, 2.4vw, 12px); margin: 20px 0 14px; }
+.sl-betbtn {
+  width: 52px; height: 52px; border-radius: 50%; font-size: 15px; font-weight: 800; color: #fff; padding: 0;
+  border: 4px dashed rgba(255,255,255,0.85); box-shadow: 0 4px 8px rgba(0,0,0,0.55), 0 0 0 2px rgba(0,0,0,0.5);
+  transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease; touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent; font-variant-numeric: tabular-nums;
+}
+.sl-betbtn.b5 { background: #c0392b; } .sl-betbtn.b10 { background: #2f6fb3; } .sl-betbtn.b25 { background: #1f8a56; }
+.sl-betbtn.b50 { background: #6b3fa0; } .sl-betbtn.b100 { background: #17140f; color: var(--gold-bright); border-color: var(--gold-bright); }
+.sl-betbtn.sel { transform: translateY(-5px) scale(1.1); box-shadow: 0 0 0 3px var(--gold-bright), 0 0 18px 4px var(--gold), 0 8px 12px rgba(0,0,0,0.5); }
+.sl-betbtn:disabled { opacity: 0.35; cursor: not-allowed; }
+.sl-betbtn.sel:disabled { opacity: 0.8; }
+
+.sl-ctl { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px; padding: 0 2px; }
+.sl-side { flex-direction: column; gap: 1px; padding: 10px 6px; min-height: 52px; line-height: 1.15; font-size: 13px; width: 100%; }
+.sl-side small { font-size: 11px; font-weight: 600; color: var(--cream-dim); letter-spacing: 0.04em; }
+.sl-side.on { background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color: var(--ink); border-color: transparent; }
+.sl-side.on small { color: #4a3510; }
+.sl-spin {
+  width: 98px; height: 98px; border-radius: 50%; padding: 0; color: #fff; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  font-family: var(--font-title); font-weight: 900; font-size: 20px; letter-spacing: 0.08em;
+  border: 4px solid var(--gold-bright);
+  background: radial-gradient(circle at 35% 26%, #ff7a6c 0%, #d0242f 48%, #7d0f1a 100%);
+  box-shadow: 0 0 0 4px #2a0a0f, 0 9px 18px rgba(0,0,0,0.65), inset 0 -9px 14px rgba(0,0,0,0.38), inset 0 7px 9px rgba(255,255,255,0.32);
+  text-shadow: 0 2px 3px rgba(0,0,0,0.6);
+  transition: transform .1s ease, filter .12s ease, opacity .12s ease;
+  animation: sl-ready 1.6s ease-in-out infinite alternate;
+}
+.sl-spin:active:not(:disabled) { transform: scale(0.94); }
+.sl-spin:disabled { animation: none; filter: saturate(0.5) brightness(0.8); cursor: not-allowed; }
+.sl-spin.busy { transform: scale(0.94); }
+@keyframes sl-ready { from { box-shadow: 0 0 0 4px #2a0a0f, 0 9px 18px rgba(0,0,0,0.65), 0 0 0 4px #2a0a0f, inset 0 -9px 14px rgba(0,0,0,0.38), inset 0 7px 9px rgba(255,255,255,0.32); } to { box-shadow: 0 0 0 4px #2a0a0f, 0 9px 18px rgba(0,0,0,0.65), 0 0 22px 8px rgba(255,200,80,0.55), inset 0 -9px 14px rgba(0,0,0,0.38), inset 0 7px 9px rgba(255,255,255,0.32); } }
+.sl-hint { text-align: center; margin-top: 14px; font-size: 11px; color: var(--text-tertiary); }
+
+/* ---------- paytable ---------- */
+.sl-pt { margin: 0 4px; border-radius: 14px; background: rgba(0,0,0,0.32); border: 1px solid var(--border); overflow: hidden; }
+.sl-pt-head {
+  width: 100%; display: flex; align-items: baseline; gap: 10px; padding: 12px 14px; background: transparent; border: 0; color: var(--gold-bright);
+  font-family: var(--font-display); font-size: 16px; font-weight: 700; text-align: left; touch-action: manipulation;
+}
+.sl-pt-sub { flex: 1 1 auto; min-width: 0; font-family: var(--font); font-size: 11px; font-weight: 500; color: var(--text-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sl-pt-chev { align-self: center; width: 8px; height: 8px; border-right: 2px solid var(--gold-bright); border-bottom: 2px solid var(--gold-bright); transform: rotate(45deg); transition: transform .15s ease; flex-shrink: 0; margin-right: 3px; }
+.sl-pt.open .sl-pt-chev { transform: rotate(-135deg); }
+.sl-pt-body { display: none; padding: 0 12px 12px; }
+.sl-pt.open .sl-pt-body { display: block; }
+.sl-pt-row { display: grid; grid-template-columns: 92px minmax(0, 1fr) 46px 48px; align-items: center; gap: 8px; padding: 5px 4px; border-radius: 8px; }
+.sl-pt-row + .sl-pt-row { border-top: 1px solid rgba(239,228,198,0.08); }
+.sl-pt-row.on { background: var(--gold-dim); box-shadow: inset 0 0 0 1px rgba(240,206,126,0.5); }
+.sl-pt-ico { display: flex; gap: 1px; align-items: center; }
+.sl-any { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 6px; font-size: 8px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-tertiary); background: rgba(255,255,255,0.06); }
+.sl-pt-lbl { font-size: 12px; color: var(--cream); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sl-pt-mult { font-size: 13px; font-weight: 800; color: var(--gold-bright); text-align: right; font-variant-numeric: tabular-nums; }
+.sl-pt-pay { font-size: 11px; color: var(--cream-dim); text-align: right; font-variant-numeric: tabular-nums; }
+.sl-pt-foot { margin-top: 8px; font-size: 11px; color: var(--text-tertiary); line-height: 1.4; }
+
+@media (max-width: 380px) {
+  .sl-pt-row { grid-template-columns: 84px minmax(0, 1fr) 40px 42px; gap: 5px; }
+  .sl-betbtn { width: 48px; height: 48px; font-size: 14px; }
+  .sl-plaque span { font-size: 15px; }
+}
+@media (min-width: 700px) {
+  .sl-title { font-size: 26px; }
+  .sl-machine { --sl-cell: 100px; padding: 16px 18px 18px; }
+  .sl-bulb { width: 11px; height: 11px; }
+  .sl-plaque { height: 44px; } .sl-plaque span { font-size: 21px; }
+  .sl-led b { font-size: 19px; }
+  .sl-msg { font-size: 17px; }
+  .sl-betbtn { width: 58px; height: 58px; font-size: 16px; }
+  .sl-flash-n { font-size: 42px; } .sl-flash.big .sl-flash-n { font-size: 56px; } .sl-flash.big .sl-flash-t { font-size: 38px; }
+}
+@media (min-width: 940px) {
+  .sl-content { max-width: 1000px; padding: 0 20px 40px; }
+  .sl-layout { display: grid; grid-template-columns: minmax(0, 560px) minmax(300px, 1fr); gap: 28px; align-items: start; }
+  .sl-side-col { margin-top: 10px; position: sticky; top: 16px; }
+  .sl-pt-body { display: block; }
+  .sl-pt-head { cursor: default; pointer-events: none; }
+  .sl-pt-chev { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sl-fx { display: none; }
+  .sl-bulb, .sl-spin, .sl-rays, .sl-flash.big .sl-flash-t { animation: none; }
+  .sl-bulb:nth-child(3n+1) { background: #fff1b0; box-shadow: 0 0 6px 1px #ffd25a; }
+  .sl-win .sl-payline, .sl-cell.sl-hit, .sl-machine.sl-glow::after { animation: none; opacity: 1; }
+  .sl-machine::after { opacity: 0; } .sl-machine.sl-glow::after { opacity: 0.6; }
+}
+
+  .lobby-art-slots { display:flex; align-items:center; justify-content:center; }
+  .lobby-reels { display:flex; gap:6px; background:#0c0718; border:4px solid #cfa040; border-radius:14px; padding:8px 10px; box-shadow:0 8px 18px rgba(0,0,0,.55); margin-top:14px; }
+  .lobby-reels span { width:34px; height:52px; background:#fdfaf2; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:30px; font-weight:800; color:#a32630; font-family:Georgia,serif; }
 </style>
 </head>
 <body>
@@ -1251,7 +1511,7 @@ async function signIn(email, password) {
     render();
   }
 }
-function signOut() { auth.signOut(); state.screen = 'home'; leaveBlackjackScreen(); leavePokerScreen(); leaveRouletteScreen(); leaveCrapsScreen(); }
+function signOut() { auth.signOut(); state.screen = 'home'; leaveBlackjackScreen(); leavePokerScreen(); leaveRouletteScreen(); leaveCrapsScreen(); leaveSlotsScreen(); }
 
 // Applies a chip delta (+/-) with a transaction so two quick writes can
 // never race each other and clobber one balance.
@@ -1334,6 +1594,11 @@ function renderInner(root) {
   if (state.screen === 'craps') {
     root.innerHTML = renderCrapsScreen();
     attachCrapsHandlers();
+    return;
+  }
+  if (state.screen === 'slots') {
+    root.innerHTML = renderSlotsScreen();
+    attachSlotsHandlers();
     return;
   }
   root.innerHTML = renderHomeScreen();
@@ -1442,6 +1707,12 @@ function renderHomeScreen() {
           <p>Pass line, field, and the point. Everyone at the table shares each roll.</p>
           <div class="lobby-meta"><span class="lobby-tag">Everyone plays</span><span class="lobby-play">Play ›</span></div>
         </div>
+        <div class="lobby-tile" id="home-play-slots">
+          <div class="lobby-art lobby-art-slots"><div class="lobby-reels"><span>7</span><span>7</span><span>7</span></div></div>
+          <h2>Slots</h2>
+          <p>Three reels, one payline. Line up the sevens for a 100× jackpot.</p>
+          <div class="lobby-meta"><span class="lobby-tag">Solo</span><span class="lobby-play">Play ›</span></div>
+        </div>
       </div>
       <div class="lobby-foot">Just for fun — chips have no real value.</div>
     </div>
@@ -1458,6 +1729,11 @@ function attachHomeHandlers() {
   document.getElementById('home-play-roulette')?.addEventListener('click', () => {
     state.screen = 'roulette';
     enterRouletteScreen();
+    render();
+  });
+  document.getElementById('home-play-slots')?.addEventListener('click', () => {
+    state.screen = 'slots';
+    enterSlotsScreen();
     render();
   });
   document.getElementById('home-play-craps')?.addEventListener('click', () => {
@@ -4838,6 +5114,805 @@ function attachCrapsHandlers() {
   document.querySelectorAll('[data-cr-zone]').forEach(el => el.addEventListener('click', () => {
     try { crPlaceBet(el.dataset.crZone, cr.chip); } catch (e) { crFail(e); }
   }));
+}
+
+</script>
+<script>
+// ===== Slots =====
+// ============================================================================
+// SLOTS — "Gilded Reels": a solo 3-reel / 1-payline video slot. No Firestore
+// table of its own: chips are debited at spin start with applyChipDelta(-bet)
+// and credited (once, guarded by a per-spin `settled` flag) when the reels stop.
+//
+// Runs as a separate classic <script> AFTER the main script and uses its
+// globals: state, escapeHtml, applyChipDelta, resetChips, render, Sound.
+// Everything here is prefixed sl / SL_ / Sl. Pure logic (paytable, strips,
+// RTP) has no DOM dependency and is unit-tested in slots.test.js.
+// ============================================================================
+
+const SL_LEN = 24;                  // stops per reel strip
+const SL_REPS = 6;                  // strip repetitions in the animated DOM strip
+const SL_BETS = [5, 10, 25, 50, 100];
+const SL_BIG_MULT = 25;             // >= this multiplier gets the BIG WIN banner
+const SL_AUTO_SPINS = 10;
+const SL_STOP_MS = [1000, 1500, 2100];
+const SL_STOP_MS_REDUCED = [380, 560, 740];
+const SL_LOOPS = [1, 2, 3];         // full strip loops each reel travels (keeps speeds similar)
+const SL_BET_KEY = 'slBet';
+const SL_PENDING_KEY = 'slPending';
+
+// Symbol ids (also the SVG <symbol id="sl-s-NAME"> names).
+const SL_SYMBOLS = ['cherry', 'lemon', 'plum', 'bell', 'gem', 'seven', 'star'];
+const SL_LABEL = { cherry: 'Cherry', lemon: 'Lemon', plum: 'Plum', bell: 'Bell', gem: 'Gem', seven: 'Seven', star: 'Star' };
+const SL_PLURAL = { cherry: 'Cherries', lemon: 'Lemons', plum: 'Plums', bell: 'Bells', gem: 'Gems', seven: 'Sevens', star: 'Stars' };
+
+// Three of a kind on the payline (multiplier of the bet, stake included).
+const SL_PAY3 = { seven: 100, gem: 50, bell: 25, star: 20, plum: 15, lemon: 10, cherry: 8 };
+const SL_PAY_CHERRY2 = 2;           // exactly two cherries anywhere on the payline
+const SL_PAY_CHERRY1 = 1;           // exactly one cherry (returns the bet)
+
+// Weights per 24-stop reel. Exact RTP is computed by slComputeRtp (~92.5%).
+const SL_COUNTS = { cherry: 4, lemon: 5, plum: 4, bell: 4, gem: 2, star: 3, seven: 2 };
+
+// ---------------------------------------------------------------------------
+// PURE LOGIC
+// ---------------------------------------------------------------------------
+// Build a 24-stop strip from the weights. Placement uses a stride coprime with
+// 24 so identical symbols are spread out (no equal neighbours, checked in tests).
+function slBuildStrip(counts, stride, rot) {
+  const order = SL_SYMBOLS.slice().sort((a, b) => counts[b] - counts[a] || SL_SYMBOLS.indexOf(a) - SL_SYMBOLS.indexOf(b));
+  const r = ((rot % order.length) + order.length) % order.length;
+  const rotated = order.slice(r).concat(order.slice(0, r));
+  const flat = [];
+  rotated.forEach(s => { for (let k = 0; k < counts[s]; k++) flat.push(s); });
+  const strip = new Array(flat.length);
+  for (let i = 0; i < flat.length; i++) strip[(i * stride) % flat.length] = flat[i];
+  return strip;
+}
+const SL_STRIPS = [slBuildStrip(SL_COUNTS, 5, 0), slBuildStrip(SL_COUNTS, 7, 2), slBuildStrip(SL_COUNTS, 11, 4)];
+
+// Evaluate the three payline symbols -> { mult, kind, hits:[bool,bool,bool] }
+function slEvaluate(syms) {
+  if (!Array.isArray(syms) || syms.length !== 3) return { mult: 0, kind: 'none', hits: [false, false, false] };
+  const [a, b, c] = syms;
+  if (a === b && b === c && SL_PAY3[a]) return { mult: SL_PAY3[a], kind: 'three', symbol: a, hits: [true, true, true] };
+  const hits = syms.map(s => s === 'cherry');
+  const n = hits.filter(Boolean).length;
+  if (n === 2) return { mult: SL_PAY_CHERRY2, kind: 'cherry2', symbol: 'cherry', hits };
+  if (n === 1) return { mult: SL_PAY_CHERRY1, kind: 'cherry1', symbol: 'cherry', hits };
+  return { mult: 0, kind: 'none', hits: [false, false, false] };
+}
+function slPayout(syms) { return slEvaluate(syms).mult; }
+
+// Exact RTP: enumerate every stop combination of the three reels.
+function slComputeRtp(strips) {
+  const s = strips || SL_STRIPS;
+  let total = 0, combos = 0;
+  for (let i = 0; i < s[0].length; i++)
+    for (let j = 0; j < s[1].length; j++)
+      for (let k = 0; k < s[2].length; k++) {
+        total += slPayout([s[0][i], s[1][j], s[2][k]]);
+        combos++;
+      }
+  return total / combos;
+}
+// Share of spins that pay anything (for the notes / sanity).
+function slHitRate(strips) {
+  const s = strips || SL_STRIPS;
+  let hit = 0, combos = 0;
+  for (let i = 0; i < s[0].length; i++)
+    for (let j = 0; j < s[1].length; j++)
+      for (let k = 0; k < s[2].length; k++) {
+        if (slPayout([s[0][i], s[1][j], s[2][k]]) > 0) hit++;
+        combos++;
+      }
+  return hit / combos;
+}
+
+// Unbiased integer in [0, n) using crypto.getRandomValues (rejection sampling).
+function slRandInt(n) {
+  const c = (typeof crypto !== 'undefined' && crypto.getRandomValues) ? crypto : null;
+  if (!c) return Math.floor(Math.random() * n);
+  const lim = Math.floor(0x100000000 / n) * n;
+  const a = new Uint32Array(1);
+  let x;
+  do { c.getRandomValues(a); x = a[0]; } while (x >= lim);
+  return x % n;
+}
+// Injectable RNG (tests / harness). rng(n) must return an integer in [0, n).
+let slRng = slRandInt;
+function slSetRng(fn) { slRng = typeof fn === 'function' ? fn : slRandInt; }
+
+// Independent stop index per reel; anything out of range falls back to the CSPRNG.
+function slPickStops(rng, strips) {
+  const s = strips || SL_STRIPS;
+  return s.map(strip => {
+    let v = rng(strip.length);
+    if (!(Number.isInteger(v) && v >= 0 && v < strip.length)) v = slRandInt(strip.length);
+    return v;
+  });
+}
+// Symbols visible on a reel for a stop index: [above, payline, below].
+function slWindow(strip, stop) {
+  const n = strip.length;
+  return [strip[(stop - 1 + n) % n], strip[stop], strip[(stop + 1) % n]];
+}
+function slSymsAt(stops, strips) {
+  const s = strips || SL_STRIPS;
+  return stops.map((st, i) => s[i][st]);
+}
+// Highest bet in the list that `avail` chips can cover, never above `pref`.
+// Returns the smallest bet when nothing is affordable (callers check affordability).
+function slClampBet(pref, avail) {
+  if (pref <= avail) return pref;
+  for (let i = SL_BETS.length - 1; i >= 0; i--) if (SL_BETS[i] <= avail && SL_BETS[i] <= pref) return SL_BETS[i];
+  return SL_BETS[0];
+}
+function slMaxBet(avail) {
+  for (let i = SL_BETS.length - 1; i >= 0; i--) if (SL_BETS[i] <= avail) return SL_BETS[i];
+  return SL_BETS[0];
+}
+// Distance (in cells) a reel travels from its previous stop to the new one.
+function slTravel(prev, next, loops) {
+  return SL_LEN * loops + (((next - prev) % SL_LEN) + SL_LEN) % SL_LEN;
+}
+function slFmt(n) {
+  n = Math.round(n);
+  const neg = n < 0;
+  const s = String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return (neg ? '-' : '') + s;
+}
+function slSigned(n) { return n > 0 ? '+' + slFmt(n) : n < 0 ? '−' + slFmt(-n) : '0'; }
+
+// ---------------------------------------------------------------------------
+// AUDIO — synthesized with Web Audio via Sound.ensureCtx(); honors Sound.enabled
+// ---------------------------------------------------------------------------
+const SlAudio = {
+  on() { try { return !!(typeof Sound !== 'undefined' && Sound.enabled); } catch (e) { return false; } },
+  ctx() { try { return typeof Sound !== 'undefined' && Sound.ensureCtx ? Sound.ensureCtx() : null; } catch (e) { return null; } },
+  tone(freq, delay, dur, vol, type, slideTo) {
+    if (!this.on()) return;
+    const ctx = this.ctx();
+    if (!ctx) return;
+    try {
+      const t0 = ctx.currentTime + delay;
+      const osc = ctx.createOscillator();
+      osc.type = type || 'triangle';
+      osc.frequency.setValueAtTime(freq, t0);
+      if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.linearRampToValueAtTime(vol, t0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0008, t0 + dur);
+      osc.connect(g).connect(ctx.destination);
+      osc.start(t0);
+      osc.stop(t0 + dur + 0.03);
+    } catch (e) { /* ignore */ }
+  },
+  noise(delay, dur, vol, freq, q, sweepTo) {
+    if (!this.on()) return;
+    const ctx = this.ctx();
+    if (!ctx) return;
+    try {
+      const len = Math.max(1, Math.floor(ctx.sampleRate * dur));
+      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const f = ctx.createBiquadFilter();
+      f.type = 'bandpass';
+      const t0 = ctx.currentTime + delay;
+      f.frequency.setValueAtTime(freq, t0);
+      if (sweepTo) f.frequency.exponentialRampToValueAtTime(sweepTo, t0 + dur);
+      f.Q.value = q || 1;
+      const g = ctx.createGain();
+      g.gain.value = vol;
+      src.connect(f).connect(g).connect(ctx.destination);
+      src.start(t0);
+    } catch (e) { /* ignore */ }
+  },
+  whoosh() { this.noise(0, 0.5, 0.12, 400, 0.8, 2400); },
+  click() { this.noise(0, 0.045, 0.3, 1500, 1.4); this.tone(190, 0, 0.07, 0.12, 'square', 90); },
+  // Rising coin jingle; the number of notes scales with the win size.
+  jingle(mult) {
+    const scale = [784, 988, 1175, 1319, 1568, 1760, 1976, 2349, 2637, 3136];
+    const n = Math.max(3, Math.min(scale.length, 3 + Math.round(mult / 4)));
+    for (let i = 0; i < n; i++) {
+      this.tone(scale[i], i * 0.07, 0.22, 0.09, 'triangle');
+      this.tone(scale[i] * 2, i * 0.07 + 0.015, 0.12, 0.04, 'sine');
+    }
+  },
+  fanfare() {
+    const seq = [[523, 0], [659, 0.14], [784, 0.28], [1047, 0.42], [784, 0.62], [1047, 0.76], [1319, 0.9]];
+    seq.forEach(([f, t]) => { this.tone(f, t, 0.28, 0.1, 'square'); this.tone(f / 2, t, 0.28, 0.07, 'triangle'); });
+    [523, 659, 784, 1047].forEach(f => this.tone(f, 1.1, 0.9, 0.07, 'triangle'));
+    this.jingle(40);
+  },
+};
+
+// ---------------------------------------------------------------------------
+// MODULE STATE (state.sl is created lazily and survives leaving the screen)
+// ---------------------------------------------------------------------------
+function slLoadBet() {
+  try {
+    const v = parseInt(localStorage.getItem(SL_BET_KEY), 10);
+    if (SL_BETS.indexOf(v) >= 0) return v;
+  } catch (e) { /* ignore */ }
+  return 10;
+}
+function slSaveBet(v) { try { localStorage.setItem(SL_BET_KEY, String(v)); } catch (e) { /* ignore */ } }
+
+function slEnsureState() {
+  if (!state.sl) {
+    state.sl = {
+      bet: slLoadBet(),           // preferred bet (display bet is clamped to what I can afford)
+      stops: [slRandInt(SL_LEN), slRandInt(SL_LEN), slRandInt(SL_LEN)],
+      spin: null,                 // the in-flight spin, or null
+      seq: 0,
+      lastResult: null,           // { syms, ev, bet, payout } of the last finished spin
+      win: null,                  // { amount, mult, big, hits, at, dur } for the win presentation
+      lastWin: 0, spins: 0, net: 0,
+      auto: 0, autoTimer: null, autoNote: null,
+      ptOpen: false, lastError: null, down: null, exp: null, raf: 0, keyBound: false,
+    };
+  }
+  return state.sl;
+}
+function slReduced() {
+  try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; }
+}
+function slOnScreen() { return state.screen === 'slots'; }
+function slRender() { if (!slOnScreen()) return; try { render(); } catch (e) { console.error('slots render failed', e); } }
+
+// Balance I can safely spend. state.chips lags a moment behind my own
+// just-issued applyChipDelta, so remember the expected value for a few secs.
+function slAvailable() {
+  const sl = slEnsureState();
+  let a = state.chips == null ? 0 : state.chips;
+  if (sl.exp) {
+    // The estimate only guards against a stale (too high) state.chips. As soon as
+    // the balance moves off the value it had when the delta was issued, the
+    // profile snapshot has arrived and the real number wins.
+    if (state.chips !== sl.exp.from || Date.now() > sl.exp.until) sl.exp = null;
+    else a = Math.min(a, sl.exp.value);
+  }
+  return a;
+}
+function slNoteDelta(delta) {
+  const sl = slEnsureState();
+  const base = slAvailable();
+  sl.exp = { value: Math.max(0, base + delta), from: state.chips, until: Date.now() + 4000 };
+}
+function slEffBet() {
+  const sl = slEnsureState();
+  if (sl.spin) return sl.spin.bet;
+  return slClampBet(sl.bet, slAvailable());
+}
+
+// ---------------------------------------------------------------------------
+// ENTER / LEAVE
+// ---------------------------------------------------------------------------
+function slOnKey(e) {
+  if (!slOnScreen()) return;
+  if (e.key !== ' ' && e.key !== 'Enter' && e.code !== 'Space') return;
+  const t = e.target;
+  // Let focused buttons / inputs keep their native Space/Enter behavior.
+  if (t && t.closest && t.closest('button, a, input, select, textarea, [contenteditable]')) return;
+  e.preventDefault();
+  if (e.repeat) return;
+  slDispatch('spin');
+}
+function slBindKeys() {
+  const sl = slEnsureState();
+  if (sl.keyBound) return;
+  document.addEventListener('keydown', slOnKey);
+  sl.keyBound = true;
+}
+function slUnbindKeys() {
+  const sl = state.sl;
+  if (!sl || !sl.keyBound) return;
+  document.removeEventListener('keydown', slOnKey);
+  sl.keyBound = false;
+}
+
+function slPendingRead() { try { return JSON.parse(localStorage.getItem(SL_PENDING_KEY) || 'null'); } catch (e) { return null; } }
+function slPendingWrite(spin) {
+  if (!(spin.payout > 0)) return;
+  try { localStorage.setItem(SL_PENDING_KEY, JSON.stringify({ id: spin.id, uid: state.user ? state.user.uid : null, payout: spin.payout, at: Date.now() })); } catch (e) { /* ignore */ }
+}
+function slPendingClear() { try { localStorage.removeItem(SL_PENDING_KEY); } catch (e) { /* ignore */ } }
+
+// A tab closed mid-spin leaves a pending win behind. Pay it out once, but only
+// if it is old enough that no live spin (<= ~3s) in another tab can own it.
+function slRecoverPending() {
+  const sl = slEnsureState();
+  if (sl.spin) return;
+  const p = slPendingRead();
+  if (!p) return;
+  const uid = state.user ? state.user.uid : null;
+  if (!uid || p.uid !== uid || !(p.payout > 0) || !(Date.now() - p.at > 15000)) return;
+  slPendingClear(); // clear BEFORE crediting so it can never pay twice
+  slNoteDelta(p.payout);
+  Promise.resolve(applyChipDelta(p.payout)).then(() => {
+    sl.autoNote = 'Recovered ' + slFmt(p.payout) + ' chips from an interrupted spin.';
+    slRender();
+  }).catch(e => console.error('slots recovery failed', e));
+}
+
+function enterSlotsScreen() {
+  const sl = slEnsureState();
+  sl.lastError = null; sl.down = null; sl.auto = 0;
+  if (sl.autoTimer) { clearTimeout(sl.autoTimer); sl.autoTimer = null; }
+  slBindKeys();
+  try { slRecoverPending(); } catch (e) { console.error(e); }
+}
+// Leaving never cancels an in-flight spin: its own promise chain still settles
+// (credits the win) even though nothing is on screen any more.
+function leaveSlotsScreen() {
+  const sl = state.sl;
+  if (!sl) return;
+  slUnbindKeys();
+  slUnbindRoot();
+  sl.auto = 0; sl.down = null;
+  if (sl.autoTimer) { clearTimeout(sl.autoTimer); sl.autoTimer = null; }
+  if (sl.raf) { cancelAnimationFrame(sl.raf); sl.raf = 0; }
+  sl.lastError = null;
+}
+
+// ---------------------------------------------------------------------------
+// SPIN
+// ---------------------------------------------------------------------------
+function slSleep(ms) { return new Promise(r => setTimeout(r, Math.max(0, ms))); }
+
+function slStartSpin(fromAuto) {
+  const sl = slEnsureState();
+  if (sl.spin) return false;                       // a spin is in flight (incl. its credit)
+  if (state.chips == null) return false;
+  const avail = slAvailable();
+  if (avail < SL_BETS[0]) {
+    sl.lastError = avail <= 0 ? 'You are out of chips. Tap Get More Chips to keep playing.' : 'Not enough chips to spin (minimum bet is ' + SL_BETS[0] + ').';
+    sl.auto = 0;
+    slRender();
+    return false;
+  }
+  const bet = slClampBet(sl.bet, avail);
+  if (bet > avail) { sl.lastError = 'Not enough chips for a ' + bet + ' bet.'; slRender(); return false; }
+  if (fromAuto && sl.auto > 0) sl.auto--;
+
+  const stops = slPickStops(slRng);
+  const syms = slSymsAt(stops);
+  const ev = slEvaluate(syms);
+  const reduced = slReduced();
+  const stopMs = (reduced ? SL_STOP_MS_REDUCED : SL_STOP_MS).slice();
+  const prev = sl.stops.slice();
+  const spin = {
+    id: Date.now().toString(36) + '-' + (++sl.seq),
+    bet, stops, syms, ev, mult: ev.mult, payout: bet * ev.mult,
+    prevStops: prev, dist: stops.map((s, i) => slTravel(prev[i], s, SL_LOOPS[i])),
+    t0: Date.now(), stopMs, reduced, settled: false,
+  };
+  sl.spin = spin;
+  sl.lastError = null; sl.autoNote = null; sl.win = null;
+  slNoteDelta(-bet);
+  SlAudio.ctx();
+  SlAudio.whoosh();
+
+  const debit = Promise.resolve().then(() => applyChipDelta(-bet)).catch(e => console.error('slots debit failed', e));
+  slRender();
+  stopMs.forEach((ms, i) => setTimeout(() => { if (slOnScreen()) SlAudio.click(); }, ms));
+
+  // The spin's own promise chain: debit -> wait for the reels -> settle. Not tied to rendering.
+  spin.chain = (async () => {
+    try {
+      await debit;
+      slPendingWrite(spin);
+      await slSleep(spin.t0 + stopMs[2] + 40 - Date.now());
+      await slSettle(spin);
+    } catch (e) {
+      console.error('slots spin failed', e);
+    } finally {
+      if (sl.spin === spin) { sl.spin = null; slRender(); }
+    }
+  })();
+  return true;
+}
+
+async function slSettle(spin) {
+  const sl = slEnsureState();
+  if (spin.settled) return;                        // never credit twice
+  spin.settled = true;
+  slPendingClear();                                // clear BEFORE crediting
+  sl.stops = spin.stops.slice();
+  sl.spins++;
+  sl.net += spin.payout - spin.bet;
+  sl.lastResult = { syms: spin.syms, ev: spin.ev, bet: spin.bet, payout: spin.payout };
+  if (spin.payout > 0) {
+    const big = spin.mult >= SL_BIG_MULT;
+    sl.lastWin = spin.payout;
+    sl.win = { amount: spin.payout, mult: spin.mult, big, hits: spin.ev.hits, at: Date.now(), dur: Math.min(2400, 600 + spin.mult * 40) };
+    if (slOnScreen()) {
+      if (big) SlAudio.fanfare(); else SlAudio.jingle(spin.mult);
+    }
+  } else {
+    sl.win = null;
+  }
+  slRender();
+  if (sl.win) slStartCount();
+  if (spin.payout > 0) {
+    slNoteDelta(spin.payout);
+    await Promise.resolve(applyChipDelta(spin.payout)).catch(e => console.error('slots credit failed', e));
+  }
+  if (sl.spin === spin) sl.spin = null;
+  slRender();
+  slAfterSettle(spin);
+}
+
+// Auto-spin continuation: stops on a big win, low chips, or when the count runs out.
+function slAfterSettle(spin) {
+  const sl = slEnsureState();
+  if (sl.auto <= 0) return;
+  if (!slOnScreen()) { sl.auto = 0; return; }
+  if (spin.mult >= SL_BIG_MULT) { sl.auto = 0; sl.autoNote = 'Auto-spin stopped on a big win!'; slRender(); return; }
+  if (slAvailable() < sl.bet) { sl.auto = 0; sl.autoNote = 'Auto-spin stopped: low chips.'; slRender(); return; }
+  const wait = sl.win ? Math.max(700, sl.win.at + sl.win.dur + 500 - Date.now()) : 650;
+  if (sl.autoTimer) clearTimeout(sl.autoTimer);
+  sl.autoTimer = setTimeout(() => {
+    sl.autoTimer = null;
+    if (sl.auto > 0 && slOnScreen() && !sl.spin) {
+      if (!slStartSpin(true)) sl.auto = 0;
+    } else sl.auto = 0;
+  }, wait);
+}
+
+function slToggleAuto() {
+  const sl = slEnsureState();
+  if (sl.auto > 0) {
+    sl.auto = 0;
+    if (sl.autoTimer) { clearTimeout(sl.autoTimer); sl.autoTimer = null; }
+    slRender();
+    return;
+  }
+  if (sl.spin) return;
+  if (slAvailable() < sl.bet) { sl.lastError = 'Not enough chips for auto-spin at that bet.'; slRender(); return; }
+  sl.auto = SL_AUTO_SPINS;
+  if (!slStartSpin(true)) sl.auto = 0;
+}
+
+// Win count-up: one rAF loop that writes into whichever #sl-win-amt exists
+// right now (render() may have replaced the node since the last frame).
+function slWinShown(now) {
+  const sl = state.sl;
+  if (!sl || !sl.win) return 0;
+  const p = Math.max(0, Math.min(1, (now - sl.win.at) / sl.win.dur));
+  return Math.round(sl.win.amount * (1 - Math.pow(1 - p, 3)));
+}
+function slStartCount() {
+  const sl = slEnsureState();
+  if (sl.raf) cancelAnimationFrame(sl.raf);
+  const step = () => {
+    sl.raf = 0;
+    if (!sl.win) return;
+    const now = Date.now();
+    const el = document.getElementById('sl-win-amt');
+    if (el) el.textContent = slFmt(slWinShown(now));
+    if (now < sl.win.at + sl.win.dur && slOnScreen()) sl.raf = requestAnimationFrame(step);
+  };
+  sl.raf = requestAnimationFrame(step);
+}
+
+// ---------------------------------------------------------------------------
+// ART — one hidden SVG sprite (symbols + gradients), referenced with <use>
+// ---------------------------------------------------------------------------
+const SL_SPRITE = `
+<svg class="sl-sprite" width="0" height="0" aria-hidden="true" focusable="false"><defs>
+  <radialGradient id="sl-g-cherry" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#ff8b7d"/><stop offset=".45" stop-color="#d3202c"/><stop offset="1" stop-color="#70081a"/></radialGradient>
+  <linearGradient id="sl-g-leaf" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7fd05a"/><stop offset="1" stop-color="#2f7a2a"/></linearGradient>
+  <linearGradient id="sl-g-lemon" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff7a0"/><stop offset=".55" stop-color="#f6cf14"/><stop offset="1" stop-color="#c79200"/></linearGradient>
+  <radialGradient id="sl-g-plum" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#c996ff"/><stop offset=".5" stop-color="#7a35c4"/><stop offset="1" stop-color="#3c1470"/></radialGradient>
+  <linearGradient id="sl-g-gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3b4"/><stop offset=".5" stop-color="#f2b92c"/><stop offset="1" stop-color="#b87c0b"/></linearGradient>
+  <linearGradient id="sl-g-badge" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e5453d"/><stop offset="1" stop-color="#8b0f1c"/></linearGradient>
+  <linearGradient id="sl-g-gem-a" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d9fbff"/><stop offset="1" stop-color="#6fd6f2"/></linearGradient>
+
+  <symbol id="sl-s-cherry" viewBox="0 0 100 100">
+    <path d="M28 68 C32 44 44 26 62 14" stroke="#3b6f26" stroke-width="3.6" fill="none" stroke-linecap="round"/>
+    <path d="M72 64 C70 42 66 28 62 14" stroke="#3b6f26" stroke-width="3.6" fill="none" stroke-linecap="round"/>
+    <path d="M62 14 C72 6 88 10 94 22 C82 28 68 26 62 14Z" fill="url(#sl-g-leaf)" stroke="#2a5f1f" stroke-width="1.4"/>
+    <circle cx="28" cy="72" r="20" fill="url(#sl-g-cherry)" stroke="#5a0614" stroke-width="1.6"/>
+    <circle cx="72" cy="68" r="20" fill="url(#sl-g-cherry)" stroke="#5a0614" stroke-width="1.6"/>
+    <ellipse cx="21" cy="64" rx="5.5" ry="3.4" fill="#fff" opacity=".55" transform="rotate(-35 21 64)"/>
+    <ellipse cx="65" cy="60" rx="5.5" ry="3.4" fill="#fff" opacity=".55" transform="rotate(-35 65 60)"/>
+  </symbol>
+  <symbol id="sl-s-lemon" viewBox="0 0 100 100">
+    <path d="M6 54 Q13 52 19 40 Q33 22 54 24 Q77 26 85 43 Q92 49 95 55 Q89 59 83 66 Q67 83 46 79 Q25 77 17 64 Q11 58 6 54Z" fill="url(#sl-g-lemon)" stroke="#9a7000" stroke-width="2"/>
+    <path d="M28 40 Q40 31 56 33" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" opacity=".6"/>
+    <path d="M52 24 C54 14 64 10 72 12 C70 20 62 25 52 24Z" fill="url(#sl-g-leaf)" stroke="#2a5f1f" stroke-width="1.2"/>
+  </symbol>
+  <symbol id="sl-s-plum" viewBox="0 0 100 100">
+    <path d="M50 24 Q51 14 58 8" stroke="#4a2c12" stroke-width="3.6" fill="none" stroke-linecap="round"/>
+    <path d="M56 12 C64 4 78 6 84 16 C74 22 62 20 56 12Z" fill="url(#sl-g-leaf)" stroke="#2a5f1f" stroke-width="1.2"/>
+    <path d="M50 24 C70 20 88 36 86 58 C84 80 66 92 50 92 C32 92 14 80 14 58 C12 36 30 20 50 24Z" fill="url(#sl-g-plum)" stroke="#2e0f55" stroke-width="2"/>
+    <path d="M50 26 C44 44 44 66 50 90" stroke="#2e0f55" stroke-width="2" fill="none" opacity=".45"/>
+    <ellipse cx="32" cy="46" rx="7" ry="11" fill="#fff" opacity=".35" transform="rotate(20 32 46)"/>
+  </symbol>
+  <symbol id="sl-s-bell" viewBox="0 0 100 100">
+    <path d="M50 8 C58 8 62 14 62 20 C82 26 84 52 86 66 L93 77 L7 77 L14 66 C16 52 18 26 38 20 C38 14 42 8 50 8Z" fill="url(#sl-g-gold)" stroke="#8a5a00" stroke-width="2.2" stroke-linejoin="round"/>
+    <path d="M30 34 C26 46 25 58 24 68" stroke="#fff" stroke-width="4.5" fill="none" stroke-linecap="round" opacity=".6"/>
+    <rect x="9" y="72" width="82" height="9" rx="4.5" fill="#d99a1c" stroke="#8a5a00" stroke-width="2"/>
+    <circle cx="50" cy="88" r="8" fill="url(#sl-g-gold)" stroke="#8a5a00" stroke-width="2"/>
+  </symbol>
+  <symbol id="sl-s-gem" viewBox="0 0 100 100">
+    <polygon points="30,16 70,16 64,40 36,40" fill="#bff3ff"/>
+    <polygon points="30,16 36,40 7,40" fill="#7fdcf5"/>
+    <polygon points="70,16 93,40 64,40" fill="#56bfe8"/>
+    <polygon points="7,40 36,40 50,92" fill="#3a9be0"/>
+    <polygon points="36,40 64,40 50,92" fill="#8fe3fb"/>
+    <polygon points="64,40 93,40 50,92" fill="#2c78c4"/>
+    <polygon points="30,16 70,16 93,40 50,92 7,40" fill="none" stroke="#14487f" stroke-width="2.4" stroke-linejoin="round"/>
+    <path d="M7 40 H93 M36 40 L30 16 M64 40 L70 16 M36 40 L50 92 L64 40" fill="none" stroke="#14487f" stroke-width="1.4" opacity=".6"/>
+    <polygon points="38,22 46,22 42,34" fill="#fff" opacity=".85"/>
+  </symbol>
+  <symbol id="sl-s-seven" viewBox="0 0 100 100">
+    <rect x="8" y="8" width="84" height="84" rx="20" fill="url(#sl-g-badge)" stroke="#f0b323" stroke-width="5"/>
+    <rect x="14" y="14" width="72" height="72" rx="15" fill="none" stroke="#ffd96b" stroke-width="1.5" opacity=".6"/>
+    <path d="M27 24 H75 V35 L54 78 H38 L58 37 H27 Z" fill="url(#sl-g-gold)" stroke="#5c3a00" stroke-width="2.4" stroke-linejoin="round"/>
+    <path d="M31 28 H70" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".7"/>
+  </symbol>
+  <symbol id="sl-s-star" viewBox="0 0 100 100">
+    <polygon points="50.0,8 61.2,38.6 92.8,40.1 68.1,59.9 76.5,91 50.0,73 23.5,91 31.9,59.9 7.2,40.1 38.8,38.6" fill="url(#sl-g-gold)" stroke="#9a5f00" stroke-width="3" stroke-linejoin="round"/>
+    <polygon points="50,22 56,40 50,48 44,40" fill="#fff" opacity=".6"/>
+    <circle cx="50" cy="52" r="5" fill="#e5453d" stroke="#8b0f1c" stroke-width="1.5"/>
+  </symbol>
+</defs></svg>`;
+
+function slSym(name, cls) {
+  return `<svg class="sl-cell${cls ? ' ' + cls : ''}" viewBox="-6 -6 112 112" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><use href="#sl-s-${name}"/></svg>`;
+}
+function slIcon(name) {
+  return `<svg class="sl-ico" viewBox="0 0 100 100" aria-hidden="true"><use href="#sl-s-${name}"/></svg>`;
+}
+
+// ---------------------------------------------------------------------------
+// RENDER
+// ---------------------------------------------------------------------------
+function slTopbar() {
+  return `
+    <div class="topbar sl-topbar">
+      <button class="btn btn-ghost btn-sm" id="sl-done" data-sl-act="done">Done</button>
+      <h1 class="page-title casino-title sl-title">Slots</h1>
+      <div class="sl-top-right">
+        <button class="sound-toggle" id="sl-sound-toggle" data-sl-act="sound" title="${Sound.enabled ? 'Mute sound' : 'Unmute sound'}">${Sound.enabled ? '🔊' : '🔇'}</button>
+        <span class="chip-count sl-balance"><span class="chip-icon"></span><span id="sl-balance">${state.chips == null ? '…' : slFmt(state.chips)}</span></span>
+      </div>
+    </div>`;
+}
+
+function slReelHtml(i, now) {
+  const sl = state.sl, sp = sl.spin, strip = SL_STRIPS[i];
+  let style = '', cls = 'sl-strip', cells = '', fx = '';
+  const rolling = sp && now < sp.t0 + sp.stopMs[i];
+  if (rolling) {
+    const m0 = SL_LEN + sp.prevStops[i], m1 = m0 + sp.dist[i];
+    const elapsed = Math.max(0, now - sp.t0);
+    for (let j = 0; j < SL_LEN * SL_REPS; j++) cells += slSym(strip[j % SL_LEN]);
+    cls += ' sl-rolling';
+    style = `--sl-from:${-(m0 - 1)};--sl-to:${-(m1 - 1)};--sl-dur:${sp.stopMs[i]}ms;--sl-dl:${-elapsed}ms;`;
+    fx = `<div class="sl-fx" style="--sl-dur:${sp.stopMs[i]}ms;--sl-dl:${-elapsed}ms;"></div>`;
+  } else {
+    const stop = sp ? sp.stops[i] : sl.stops[i];
+    const w = slWindow(strip, stop);
+    const hit = !!(sl.win && !(sp && !sp.settled) && sl.win.hits[i]);
+    cells = slSym(w[0]) + slSym(w[1], hit ? 'sl-hit' : '') + slSym(w[2]);
+  }
+  return `<div class="sl-reel" data-reel="${i}"><div class="${cls}" style="${style}">${cells}</div>${fx}</div>`;
+}
+
+function slResultMsg(sl) {
+  if (sl.spin && !sl.spin.settled) return 'Spinning…';
+  if (sl.autoNote) return escapeHtml(sl.autoNote);
+  const r = sl.lastResult;
+  if (!r) return 'Match three to win. Cherries pay too!';
+  const ev = r.ev;
+  if (ev.kind === 'three') return `${slLabel3(ev.symbol)} · ${ev.mult}×`;
+  if (ev.kind === 'cherry2') return `Two cherries · ${ev.mult}×`;
+  if (ev.kind === 'cherry1') return `One cherry · bet back`;
+  return 'No win. Spin again!';
+}
+function slLabel3(sym) { return '3 ' + SL_PLURAL[sym]; }
+
+function slPaytableHtml(bet) {
+  const sl = state.sl;
+  const winKey = sl.win && !sl.spin ? (sl.lastResult && sl.lastResult.ev.kind === 'three' ? 't' + sl.lastResult.ev.symbol : sl.lastResult && sl.lastResult.ev.kind) : null;
+  const row = (key, icons, label, mult) => `
+      <div class="sl-pt-row${winKey === key ? ' on' : ''}">
+        <span class="sl-pt-ico">${icons}</span>
+        <span class="sl-pt-lbl">${label}</span>
+        <span class="sl-pt-mult">${mult}×</span>
+        <span class="sl-pt-pay">${slFmt(mult * bet)}</span>
+      </div>`;
+  const order = ['seven', 'gem', 'bell', 'star', 'plum', 'lemon', 'cherry'];
+  const rows = order.map(s => row('t' + s, slIcon(s) + slIcon(s) + slIcon(s), SL_PLURAL[s], SL_PAY3[s])).join('')
+    + row('cherry2', slIcon('cherry') + slIcon('cherry') + '<span class="sl-any">any</span>', 'Two cherries', SL_PAY_CHERRY2)
+    + row('cherry1', slIcon('cherry') + '<span class="sl-any">any</span><span class="sl-any">any</span>', 'One cherry', SL_PAY_CHERRY1);
+  return `
+    <div class="sl-pt${sl.ptOpen ? ' open' : ''}">
+      <button class="sl-pt-head" id="sl-pt-toggle" data-sl-act="pt" aria-expanded="${sl.ptOpen}">
+        <span>Paytable</span><span class="sl-pt-sub">pays on the middle line · bet ${bet}</span><span class="sl-pt-chev" aria-hidden="true"></span>
+      </button>
+      <div class="sl-pt-body">${rows}
+        <div class="sl-pt-foot">Payouts are multiples of your bet. One payline: the highlighted middle row.</div>
+      </div>
+    </div>`;
+}
+
+function renderSlotsScreen() {
+  const sl = slEnsureState();
+  const now = Date.now();
+  const spin = sl.spin;
+  const rolling = !!(spin && !spin.settled);
+  const avail = slAvailable();
+  const bet = slEffBet();
+  const chips = state.chips == null ? 0 : state.chips;
+  const broke = state.chips != null && avail < SL_BETS[0] && !spin;
+  const canSpin = !spin && state.chips != null && avail >= SL_BETS[0] && sl.auto <= 0;
+  const lock = !!spin || sl.auto > 0;
+
+  const win = sl.win && !rolling ? sl.win : null;
+  const winAge = win ? Math.max(0, now - win.at) : 0;
+  const life = win ? (win.big ? 3800 : 2400) : 0;
+  const showFlash = !!(win && winAge < life);
+  const wdl = `--sl-wdl:${-winAge}ms;--sl-life:${life}ms;`;
+
+  const bulbs = Array.from({ length: 15 }, (_, k) => `<i class="sl-bulb" style="--k:${k % 3}"></i>`).join('');
+  const reels = [0, 1, 2].map(i => slReelHtml(i, now)).join('');
+
+  const flashHtml = showFlash ? `
+        <div class="sl-flash${win.big ? ' big' : ''}" style="${wdl}">
+          ${win.big ? '<div class="sl-rays"></div>' : ''}
+          <div class="sl-flash-t">${win.big ? 'BIG WIN' : 'WIN'}</div>
+          <div class="sl-flash-n">+<span id="sl-win-amt">${slFmt(slWinShown(now))}</span></div>
+          <div class="sl-flash-x">${win.mult}× your bet</div>
+        </div>` : '';
+
+  const net = sl.net;
+  const autoLbl = sl.auto > 0 ? `STOP<small>${sl.auto} left</small>` : `AUTO<small>×${SL_AUTO_SPINS}</small>`;
+  const maxBet = slMaxBet(avail);
+
+  return `
+    ${SL_SPRITE}
+    ${slTopbar()}
+    <div class="content sl-content">
+      ${sl.lastError ? `
+        <div class="sl-error">
+          <span>${escapeHtml(sl.lastError)}</span>
+          <button class="btn btn-ghost btn-sm" id="sl-dismiss-error" data-sl-act="dismiss" style="flex-shrink:0;">Dismiss</button>
+        </div>` : ''}
+      <div class="sl-layout">
+        <div class="sl-main">
+          <div class="sl-machine${win ? ' sl-win' : ''}${showFlash ? ' sl-glow' : ''}${rolling ? ' sl-busy' : ''}" style="--sl-ph:${now % 1200};${wdl}">
+            <div class="sl-marquee" aria-hidden="true">${bulbs}</div>
+            <div class="sl-plaque"><span>Gilded Reels</span></div>
+            <div class="sl-window">
+              <div class="sl-reels">${reels}</div>
+              <i class="sl-arrow l"></i><i class="sl-arrow r"></i><div class="sl-payline"></div>
+              ${flashHtml}
+            </div>
+            <div class="sl-msg${win ? ' win' : ''}" id="sl-msg" aria-live="polite">${slResultMsg(sl)}</div>
+            <div class="sl-leds">
+              <div class="sl-led"><span>BET</span><b id="sl-led-bet">${slFmt(bet)}</b></div>
+              <div class="sl-led"><span>LAST WIN</span><b id="sl-led-win">${slFmt(sl.lastWin)}</b></div>
+              <div class="sl-led"><span>SPINS</span><b id="sl-led-spins">${slFmt(sl.spins)}</b></div>
+              <div class="sl-led"><span>NET</span><b id="sl-led-net" class="${net > 0 ? 'up' : net < 0 ? 'down' : ''}">${slSigned(net)}</b></div>
+            </div>
+          </div>
+
+          <div class="sl-bets" role="group" aria-label="Bet per spin">
+            ${SL_BETS.map(v => `<button class="sl-betbtn b${v}${v === bet ? ' sel' : ''}" data-sl-act="bet" data-sl-key="${v}" ${lock || v > avail ? 'disabled' : ''} aria-pressed="${v === bet}" aria-label="Bet ${v}">${v}</button>`).join('')}
+          </div>
+          <div class="sl-ctl">
+            <button class="btn btn-secondary sl-side" id="sl-max" data-sl-act="max" ${lock || broke || bet === maxBet ? 'disabled' : ''}>MAX BET<small>${maxBet}</small></button>
+            <button class="sl-spin${rolling ? ' busy' : ''}" id="sl-spin" data-sl-act="spin" ${canSpin ? '' : 'disabled'} aria-label="Spin"><span>SPIN</span></button>
+            <button class="btn btn-secondary sl-side${sl.auto > 0 ? ' on' : ''}" id="sl-auto" data-sl-act="auto" ${(spin && sl.auto <= 0) || broke ? 'disabled' : ''}>${autoLbl}</button>
+          </div>
+          ${broke ? `<button class="btn btn-primary btn-block" id="sl-get-chips" data-sl-act="getchips" style="margin-top:14px;">Get More Chips</button>` : ''}
+          <div class="sl-hint">Space or Enter to spin${chips < SL_BETS[0] ? '' : ' · bets are clamped to what you can afford'}</div>
+        </div>
+        <div class="sl-side-col">${slPaytableHtml(bet)}</div>
+      </div>
+    </div>`;
+}
+
+// ---------------------------------------------------------------------------
+// HANDLERS — delegated pointerdown/up on #root so a re-render between press
+// and release (profile snapshots arrive constantly) cannot swallow a tap.
+// ---------------------------------------------------------------------------
+function slDispatch(act, key) {
+  const sl = slEnsureState();
+  try {
+    switch (act) {
+      case 'spin': if (!sl.spin && sl.auto <= 0) slStartSpin(false); break;
+      case 'bet': {
+        const v = parseInt(key, 10);
+        if (sl.spin || sl.auto > 0 || SL_BETS.indexOf(v) < 0) break;
+        if (v > slAvailable()) { sl.lastError = 'Not enough chips for a ' + v + ' bet.'; slRender(); break; }
+        sl.bet = v; slSaveBet(v); Sound.chip(); slRender();
+        break;
+      }
+      case 'max': {
+        if (sl.spin || sl.auto > 0) break;
+        sl.bet = slMaxBet(slAvailable()); slSaveBet(sl.bet); Sound.chip(); slRender();
+        break;
+      }
+      case 'auto': slToggleAuto(); break;
+      case 'pt': sl.ptOpen = !sl.ptOpen; slRender(); break;
+      case 'dismiss': sl.lastError = null; slRender(); break;
+      case 'sound': Sound.setEnabled(!Sound.enabled); slRender(); break;
+      case 'getchips': Promise.resolve(resetChips()).catch(e => { sl.lastError = String(e && e.message || e); slRender(); }); break;
+      case 'done': leaveSlotsScreen(); state.screen = 'home'; render(); break;
+    }
+  } catch (e) {
+    console.error('slots handler failed', e);
+    sl.lastError = (e && e.message) ? e.message : String(e);
+    slRender();
+  }
+}
+
+function slBindRoot() {
+  const root = document.getElementById('root');
+  if (!root || root._slb) return;
+  const find = e => {
+    const el = e.target && e.target.closest ? e.target.closest('[data-sl-act]') : null;
+    return el && root.contains(el) ? el : null;
+  };
+  const idOf = el => el.dataset.slAct + ':' + (el.dataset.slKey || '');
+  const onDown = e => {
+    if (e.button > 0) return;
+    const el = find(e);
+    state.sl.down = el && !el.disabled ? { id: idOf(el), x: e.clientX, y: e.clientY } : null;
+  };
+  const onUp = e => {
+    const d = state.sl && state.sl.down;
+    if (state.sl) state.sl.down = null;
+    if (!d) return;
+    const el = find(e);
+    if (!el || el.disabled || idOf(el) !== d.id) return;
+    if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 14) return;
+    slDispatch(el.dataset.slAct, el.dataset.slKey);
+  };
+  const onCancel = () => { if (state.sl) state.sl.down = null; };
+  const onClick = e => { // keyboard / assistive activation only (detail 0)
+    if (e.detail !== 0) return;
+    const el = find(e);
+    if (el && !el.disabled) slDispatch(el.dataset.slAct, el.dataset.slKey);
+  };
+  root.addEventListener('pointerdown', onDown);
+  root.addEventListener('pointerup', onUp);
+  root.addEventListener('pointercancel', onCancel);
+  root.addEventListener('click', onClick);
+  root._slb = { onDown, onUp, onCancel, onClick };
+}
+function slUnbindRoot() {
+  const root = document.getElementById('root');
+  if (!root || !root._slb) return;
+  const b = root._slb;
+  root.removeEventListener('pointerdown', b.onDown);
+  root.removeEventListener('pointerup', b.onUp);
+  root.removeEventListener('pointercancel', b.onCancel);
+  root.removeEventListener('click', b.onClick);
+  root._slb = null;
+}
+function attachSlotsHandlers() {
+  slEnsureState();
+  slBindRoot();
+  slBindKeys();
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    SL_LEN, SL_BETS, SL_SYMBOLS, SL_PAY3, SL_PAY_CHERRY2, SL_PAY_CHERRY1, SL_COUNTS, SL_STRIPS, SL_BIG_MULT, SL_STOP_MS,
+    slBuildStrip, slEvaluate, slPayout, slComputeRtp, slHitRate, slRandInt, slPickStops, slWindow, slSymsAt,
+    slClampBet, slMaxBet, slTravel, slFmt, slSigned, slSetRng,
+  };
 }
 
 </script>

@@ -636,6 +636,408 @@
     color: var(--text-secondary); font-size: 15px; flex-shrink: 0;
   }
   .sound-toggle:hover { color: var(--cream); }
+
+
+  .lobby-wheel { position: absolute; left: 50%; top: 50%; width: 96px; height: 96px; margin: -52px 0 0 -48px; border-radius: 50%;
+    background: radial-gradient(circle, #1a1030 0 14%, #cfa040 15% 19%, transparent 20%),
+      repeating-conic-gradient(#a32630 0 9.7deg, #14120f 9.7deg 19.4deg);
+    border: 5px solid #cfa040; box-shadow: 0 8px 18px rgba(0,0,0,0.55); }
+  .lobby-wheel::after { content: ''; position: absolute; left: 50%; top: 9px; width: 9px; height: 9px; margin-left: -4px; border-radius: 50%; background: #fdfaf2; }
+  .lobby-die { position: absolute; width: 58px; height: 58px; border-radius: 12px; background: #fdfaf2; color: #1c1712; font-size: 54px; line-height: 58px; text-align: center; box-shadow: 0 6px 14px rgba(0,0,0,0.55); left: 20px; top: 28px; transform: rotate(-14deg); }
+  .lobby-die.d2 { left: 72px; top: 36px; transform: rotate(12deg); color: #a32630; }
+/* ===== Roulette ===== */
+/* ===== Roulette (all selectors prefixed .rl-) ===== */
+.rl-topbar { flex-wrap: nowrap; padding: 14px 12px 4px; gap: 8px; }
+.rl-title { font-size: 22px; min-width: 0; text-align: center; flex: 1 1 auto; white-space: nowrap; }
+.rl-top-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.rl-balance { color: var(--gold-bright); font-size: 14px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 999px; padding: 5px 11px 5px 8px; }
+.rl-content { max-width: 820px; padding: 0 8px 40px; overflow-x: hidden; }
+
+.rl-error {
+  background: rgba(200,60,60,0.15); border: 1px solid var(--red-bright); border-radius: 10px;
+  padding: 10px 12px; margin: 6px 4px 12px; font-size: 12px; color: var(--red-bright);
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+
+/* ---- stage: skyline backdrop + wheel ---- */
+.rl-stage {
+  --rl-size: min(74vw, 290px);
+  position: relative; isolation: isolate; padding: 16px 0 14px; margin-top: 4px;
+}
+.rl-stage .pk-room { height: 72%; left: 0; right: 0; top: 0; border-radius: 18px 18px 0 0; }
+.rl-wheel-wrap { position: relative; z-index: 1; width: var(--rl-size); height: var(--rl-size); margin: 8px auto 0; filter: drop-shadow(0 12px 18px rgba(0,0,0,0.55)); }
+.rl-bezel, .rl-wheel, .rl-ball-layer { position: absolute; inset: 0; }
+.rl-bezel svg, .rl-wheel svg { width: 100%; height: 100%; display: block; }
+.rl-wheel { will-change: transform; transform-origin: 50% 50%; }
+.rl-ball-layer { pointer-events: none; transform-origin: 50% 50%; will-change: transform; }
+.rl-ball {
+  position: absolute; left: 50%; top: 15%; width: 4%; aspect-ratio: 1; border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle at 35% 30%, #fff, #e4e4e4 45%, #8d8d8d 100%);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.8), 0 0 4px rgba(255,255,255,0.35);
+}
+.rl-marker {
+  position: absolute; left: 50%; top: -9px; transform: translateX(-50%); z-index: 3; width: 0; height: 0;
+  border-left: 9px solid transparent; border-right: 9px solid transparent; border-top: 17px solid var(--gold-bright);
+  filter: drop-shadow(0 2px 2px rgba(0,0,0,0.7));
+}
+@keyframes rl-wheel-spin { from { transform: rotate(var(--rl-from)); } to { transform: rotate(var(--rl-to)); } }
+@keyframes rl-ball-orbit { from { transform: rotate(0deg); } to { transform: rotate(var(--rl-ball-to)); } }
+@keyframes rl-ball-drop { 0%, 62% { top: 3.6%; } 100% { top: 15%; } }
+
+/* ---- status / history / result ---- */
+.rl-status {
+  margin: 6px 4px 8px; text-align: center; padding: 8px 12px 9px; border-radius: 12px;
+  background: rgba(0,0,0,0.38); border: 1px solid var(--border);
+}
+.rl-status-text { font-family: var(--font-display); font-weight: 700; font-size: 17px; color: var(--gold-bright); letter-spacing: 0.01em; min-height: 24px; font-variant-numeric: tabular-nums; }
+.rl-timer { height: 4px; border-radius: 3px; background: rgba(0,0,0,0.45); overflow: hidden; margin-top: 6px; }
+.rl-timer-fill { height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-bright)); transition: width 1s linear; }
+
+.rl-history { display: flex; gap: 4px; justify-content: center; align-items: center; flex-wrap: wrap; margin: 0 4px 10px; min-height: 26px; }
+.rl-hn {
+  min-width: 24px; height: 24px; padding: 0 3px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: var(--cream); border: 1px solid rgba(240,206,126,0.5); font-variant-numeric: tabular-nums;
+}
+.rl-hn.red { background: #b3282d; } .rl-hn.black { background: #15110d; } .rl-hn.green { background: #1f8a56; }
+.rl-hn.last { box-shadow: 0 0 0 2px var(--gold-bright), 0 0 10px 1px var(--gold); transform: scale(1.12); }
+.rl-hempty { font-size: 12px; color: var(--text-tertiary); }
+
+.rl-result {
+  display: flex; align-items: center; justify-content: center; gap: 14px; margin: 0 4px 12px; padding: 10px 14px;
+  border-radius: 14px; background: rgba(0,0,0,0.42); border: 1px solid var(--gold);
+  animation: rl-pop .45s cubic-bezier(.2,1.4,.4,1) both;
+}
+@keyframes rl-pop { from { transform: scale(.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.rl-result-num {
+  width: 64px; height: 64px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-title); font-size: 30px; font-weight: 900; color: var(--cream);
+  border: 3px solid var(--gold-bright); box-shadow: 0 0 18px 2px rgba(240,206,126,0.35), inset 0 0 12px rgba(0,0,0,0.4);
+}
+.rl-result-num.red { background: #b3282d; } .rl-result-num.black { background: #15110d; } .rl-result-num.green { background: #1f8a56; }
+.rl-result-side { min-width: 0; }
+.rl-result-word { font-family: var(--font-title); font-size: 18px; letter-spacing: 0.08em; color: var(--gold-bright); }
+.rl-result-desc { font-size: 12px; color: var(--cream-dim); }
+.rl-mine { margin-top: 4px; font-size: 14px; font-weight: 800; color: var(--cream-dim); }
+.rl-mine.win { color: #7be3a1; } .rl-mine.lose { color: var(--red-bright); }
+
+/* ---- betting board ---- */
+.rl-board {
+  display: grid; grid-template-columns: repeat(13, minmax(0, 1fr)); gap: 2px; padding: 5px; margin: 8px 3px 12px;
+  background: var(--felt); border-radius: 10px;
+  background-image: radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.07), transparent 65%);
+  box-shadow: 0 0 0 4px var(--rail), 0 0 0 5px var(--gold), 0 10px 24px rgba(0,0,0,0.5);
+}
+.rl-gap { display: block; }
+.rl-cell {
+  position: relative; height: clamp(34px, 9.4vw, 46px); padding: 0; min-width: 0; border-radius: 4px;
+  border: 1px solid rgba(240,206,126,0.5); color: var(--cream); font-weight: 700; font-size: clamp(10px, 2.9vw, 14px);
+  display: flex; align-items: center; justify-content: center; touch-action: manipulation; user-select: none; -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent; font-variant-numeric: tabular-nums; line-height: 1; overflow: visible;
+}
+.rl-cell:active { transform: scale(0.94); }
+.rl-cell.red { background: linear-gradient(180deg, #c0302f, #962025); }
+.rl-cell.black { background: linear-gradient(180deg, #24201a, #0e0c09); }
+.rl-cell.green { background: linear-gradient(180deg, #25a367, #187246); }
+.rl-cell.out { background: rgba(0,0,0,0.22); font-size: clamp(9px, 2.6vw, 13px); letter-spacing: 0.02em; }
+.rl-cell.rl-col { font-size: clamp(8px, 2.3vw, 11px); }
+.rl-cell.rl-zero { letter-spacing: 0.2em; }
+.rl-lbl { pointer-events: none; white-space: nowrap; }
+.rl-cell.rl-hit { box-shadow: 0 0 0 2px var(--gold-bright), 0 0 12px 2px var(--gold); z-index: 1; }
+.rl-board.rl-closed .rl-cell { opacity: 0.78; cursor: not-allowed; }
+.rl-board.rl-closed .rl-cell.rl-hit { opacity: 1; }
+.rl-stack {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; pointer-events: none;
+  min-width: 20px; height: 20px; padding: 0 4px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 800; color: #fff; border: 2px dashed rgba(255,255,255,0.85);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,0,0,0.5);
+}
+.rl-cell.rl-wide .rl-stack { left: auto; right: 4px; transform: translateY(-50%); }
+.rl-stack.c5 { background: #c0392b; } .rl-stack.c25 { background: #1f8a56; }
+.rl-stack.c100 { background: #17140f; border-color: var(--gold-bright); color: var(--gold-bright); }
+.rl-stack.c500 { background: #6b3fa0; }
+
+/* ---- chip selector + actions ---- */
+.rl-chipbar { display: flex; justify-content: center; gap: clamp(8px, 3vw, 16px); margin: 4px 0 6px; }
+.rl-chipbtn {
+  width: 54px; height: 54px; border-radius: 50%; font-size: 15px; font-weight: 800; color: #fff; padding: 0;
+  border: 4px dashed rgba(255,255,255,0.85); box-shadow: 0 4px 8px rgba(0,0,0,0.55), 0 0 0 2px rgba(0,0,0,0.5);
+  transition: transform .12s ease, box-shadow .12s ease; touch-action: manipulation;
+}
+.rl-chipbtn.c5 { background: #c0392b; } .rl-chipbtn.c25 { background: #1f8a56; }
+.rl-chipbtn.c100 { background: #17140f; color: var(--gold-bright); border-color: var(--gold-bright); }
+.rl-chipbtn.c500 { background: #6b3fa0; }
+.rl-chipbtn.sel { transform: translateY(-5px) scale(1.1); box-shadow: 0 0 0 3px var(--gold-bright), 0 0 18px 4px var(--gold), 0 8px 12px rgba(0,0,0,0.5); }
+.rl-mybets { text-align: center; font-size: 13px; color: var(--cream-dim); margin: 8px 0 8px; }
+.rl-mybets b { color: var(--gold-bright); font-variant-numeric: tabular-nums; }
+.rl-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 4px; }
+
+/* ---- players panel ---- */
+.rl-panel { margin: 16px 4px 0; padding: 12px 14px; border-radius: 14px; background: rgba(0,0,0,0.32); border: 1px solid var(--border); }
+.rl-panel-title { font-family: var(--font-display); font-size: 14px; font-weight: 700; color: var(--gold-bright); margin-bottom: 6px; letter-spacing: 0.02em; }
+.rl-empty { font-size: 12px; color: var(--text-tertiary); padding: 4px 0; }
+.rl-player { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
+.rl-player + .rl-player { border-top: 1px solid rgba(239,228,198,0.08); }
+.rl-pname { flex: 1 1 auto; min-width: 0; font-size: 13px; font-weight: 600; color: var(--cream); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rl-pname small { color: var(--text-tertiary); font-weight: 500; }
+.rl-pstake { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--gold-bright); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.rl-mini { width: 13px; height: 13px; box-shadow: 0 0 0 1.5px var(--ink), inset 0 0 0 3px var(--card-face); }
+.rl-net { min-width: 52px; text-align: right; font-size: 13px; font-weight: 800; color: var(--cream-dim); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.rl-net.win { color: #7be3a1; } .rl-net.lose { color: var(--red-bright); }
+
+@media (min-width: 700px) {
+  .rl-stage { --rl-size: 340px; }
+  .rl-content { padding: 0 20px 40px; }
+  .rl-title { font-size: 26px; }
+  .rl-cell { height: 50px; font-size: 15px; }
+  .rl-cell.out { font-size: 13px; }
+  .rl-cell.rl-col { font-size: 12px; }
+  .rl-board { gap: 3px; padding: 8px; }
+  .rl-stack { min-width: 26px; height: 26px; font-size: 11px; }
+  .rl-status-text { font-size: 20px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rl-result { animation: none; }
+}
+
+/* ===== Craps ===== */
+/* ===== Craps table (all selectors prefixed .cr-) ===== */
+.cr-content { max-width: 760px; overflow-x: hidden; }
+
+/* Stage: skyline + dice tray + point puck + status + history */
+.cr-stage {
+  position: relative; overflow: hidden; isolation: isolate;
+  border-radius: 20px; padding: 6px 12px 12px; margin: 4px 0 16px;
+  background: var(--felt);
+  background-image: radial-gradient(ellipse at 50% 20%, rgba(255,255,255,0.09), transparent 60%),
+                    radial-gradient(ellipse at 50% 120%, rgba(0,0,0,0.4), transparent 65%);
+  box-shadow: 0 0 0 6px var(--rail), 0 0 0 7px var(--gold), 0 14px 34px rgba(0,0,0,0.55), inset 0 0 60px rgba(0,0,0,0.4);
+}
+.cr-room {
+  position: absolute; left: 0; right: 0; top: 0; height: 52%; z-index: -1; overflow: hidden;
+  background: linear-gradient(180deg, #1a1030 0%, #2b1840 55%, #3d2148 100%);
+  -webkit-mask: linear-gradient(180deg, #000 40%, transparent 100%);
+          mask: linear-gradient(180deg, #000 40%, transparent 100%);
+  opacity: 0.85;
+}
+.cr-room svg { width: 100%; height: 100%; display: block; }
+
+/* Dice */
+.cr-dice {
+  --s: 58px;
+  display: flex; justify-content: center; align-items: center; gap: 44px;
+  height: 150px; padding-top: 22px;
+}
+@media (min-width: 700px) { .cr-dice { --s: 74px; height: 180px; gap: 70px; } }
+.cr-die-hop { width: var(--s); height: var(--s); perspective: 520px; flex-shrink: 0; filter: drop-shadow(0 10px 7px rgba(0,0,0,0.4)); }
+.cr-die-tilt { width: 100%; height: 100%; transform-style: preserve-3d; transform: rotateX(-26deg) rotateY(-32deg); }
+.cr-cube {
+  position: relative; width: 100%; height: 100%; transform-style: preserve-3d;
+  transform: rotateX(var(--fx, 0deg)) rotateY(var(--fy, 0deg));
+}
+.cr-v1 { --fx: 0deg;   --fy: 0deg; }
+.cr-v2 { --fx: -90deg; --fy: 0deg; }
+.cr-v3 { --fx: 0deg;   --fy: -90deg; }
+.cr-v4 { --fx: 0deg;   --fy: 90deg; }
+.cr-v5 { --fx: 90deg;  --fy: 0deg; }
+.cr-v6 { --fx: 0deg;   --fy: 180deg; }
+.cr-face {
+  position: absolute; inset: 0; border-radius: 16%;
+  display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); padding: 13%;
+  background: radial-gradient(circle at 30% 25%, #fffdf4 0%, #f3ecd6 55%, #d8cfb0 100%);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12), inset 0 -4px 8px rgba(120,100,50,0.22);
+  backface-visibility: hidden; -webkit-backface-visibility: hidden;
+}
+.cr-face b { display: block; }
+.cr-pip {
+  display: block; width: 82%; height: 82%; place-self: center; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #4a4036, var(--ink) 70%);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.6);
+}
+.cr-f1 .cr-pip { background: radial-gradient(circle at 35% 30%, #d8504a, var(--red-suit) 75%); width: 100%; height: 100%; }
+.cr-f1 { transform: translateZ(calc(var(--s) / 2)); }
+.cr-f6 { transform: rotateY(180deg) translateZ(calc(var(--s) / 2)); }
+.cr-f3 { transform: rotateY(90deg) translateZ(calc(var(--s) / 2)); }
+.cr-f4 { transform: rotateY(-90deg) translateZ(calc(var(--s) / 2)); }
+.cr-f2 { transform: rotateX(90deg) translateZ(calc(var(--s) / 2)); }
+.cr-f5 { transform: rotateX(-90deg) translateZ(calc(var(--s) / 2)); }
+
+/* Tumble: spins land exactly on the real faces (360-multiples added to start).
+   --dl is a NEGATIVE delay = time already elapsed, so a re-render or opening the
+   screen mid-roll continues the animation instead of restarting it. */
+.cr-rolling .cr-cube { animation: crSpin 2.8s cubic-bezier(.16,.6,.25,1) both; animation-delay: var(--dl, 0ms); }
+.cr-rolling .cr-die-hop { animation: crHop 2.8s ease-in-out both; animation-delay: var(--dl, 0ms); }
+@keyframes crSpin {
+  from { transform: rotateX(calc(var(--fx) + var(--sx))) rotateY(calc(var(--fy) + var(--sy))) rotateZ(var(--sz)); }
+  to   { transform: rotateX(var(--fx)) rotateY(var(--fy)) rotateZ(0deg); }
+}
+@keyframes crHop {
+  0%   { transform: translate(var(--hx), 20px); }
+  18%  { transform: translate(calc(var(--hx) * .55), -64px); }
+  36%  { transform: translate(calc(var(--hx) * .22), 0); }
+  52%  { transform: translate(calc(var(--hx) * .08), -28px); }
+  68%  { transform: translate(0, 0); }
+  82%  { transform: translate(0, -9px); }
+  100% { transform: translate(0, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cr-rolling .cr-cube, .cr-rolling .cr-die-hop { animation: none; }
+}
+
+/* Point row + puck */
+.cr-points { display: flex; gap: 5px; justify-content: center; margin: 0 0 10px; }
+.cr-pt {
+  position: relative; flex: 1 1 0; min-width: 0; max-width: 62px; height: 36px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid rgba(240,206,126,0.28); background: rgba(0,0,0,0.2);
+  font-family: var(--font-display); font-weight: 800; font-size: 16px; color: var(--cream-dim);
+}
+.cr-pt.on { border-color: var(--gold-bright); background: var(--gold-dim); color: var(--gold-bright); box-shadow: 0 0 14px rgba(240,206,126,0.35); }
+.cr-pt-puck { background: transparent; border-color: transparent; }
+.cr-pt-lbl { font-family: var(--font); font-size: 9px; letter-spacing: 0.1em; color: var(--text-tertiary); }
+.cr-puck {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 50%; font-family: var(--font); font-size: 9px; font-weight: 800; letter-spacing: 0.04em;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.55);
+}
+.cr-puck.off { background: #17120c; color: var(--cream); border: 2px solid var(--cream-dim); }
+.cr-puck.on {
+  position: absolute; left: 50%; top: -17px; margin-left: -13px; z-index: 2; width: 26px; height: 26px; font-size: 8.5px;
+  background: var(--cream); color: var(--ink); border: 2px solid var(--gold);
+  animation: crPuck .35s cubic-bezier(.2,1.4,.4,1) both;
+}
+@keyframes crPuck { from { transform: translateY(-14px) scale(1.4); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* Status */
+.cr-status { text-align: center; padding: 2px 4px 0; }
+.cr-head { font-family: var(--font-display); font-weight: 700; font-size: clamp(16px, 4.6vw, 21px); color: var(--cream); line-height: 1.25; text-shadow: 0 2px 6px rgba(0,0,0,0.6); }
+.cr-count { display: inline-block; margin-left: 4px; padding: 0 9px; border-radius: 999px; background: rgba(0,0,0,0.45); border: 1px solid var(--gold); color: var(--gold-bright); font-family: var(--font); font-size: 0.8em; font-variant-numeric: tabular-nums; }
+.cr-sub { font-size: 12px; color: var(--cream-dim); margin-top: 3px; }
+.cr-timer { height: 4px; border-radius: 3px; background: rgba(0,0,0,0.4); overflow: hidden; margin: 9px auto 0; max-width: 260px; }
+.cr-timer i { display: block; height: 100%; width: 100%; transform-origin: left center; background: linear-gradient(90deg, var(--gold), var(--gold-bright)); animation: crTimer linear both; }
+@keyframes crTimer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+/* History */
+.cr-hist { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 5px; margin-top: 12px; }
+.cr-hist-lbl { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-tertiary); margin-right: 3px; }
+.cr-hist-empty { font-size: 11px; color: var(--text-tertiary); }
+.cr-h {
+  min-width: 26px; height: 26px; padding: 0 4px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--cream);
+  background: rgba(0,0,0,0.35); border: 1px solid rgba(239,228,198,0.14);
+}
+.cr-h.seven { color: #fff; background: var(--red-suit); border-color: var(--red-bright); }
+.cr-h.yo { color: var(--ink); background: var(--gold); border-color: var(--gold-bright); }
+.cr-h.craps { color: var(--cream-dim); background: rgba(0,0,0,0.5); }
+.cr-h.last { box-shadow: 0 0 0 2px var(--gold-bright); }
+
+/* Betting layout */
+.cr-board {
+  display: grid; gap: 10px; padding: 12px; margin-bottom: 14px; border-radius: 20px;
+  background: var(--felt);
+  background-image: radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.07), transparent 60%),
+                    radial-gradient(ellipse at 50% 100%, rgba(0,0,0,0.3), transparent 70%);
+  box-shadow: 0 0 0 6px var(--rail), 0 0 0 7px var(--gold), 0 10px 28px rgba(0,0,0,0.5), inset 0 0 50px rgba(0,0,0,0.35);
+}
+.cr-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cr-row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.cr-zone {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  min-width: 0; padding: 10px 6px 6px; min-height: 76px; border-radius: 14px; text-align: center;
+  border: 2px solid rgba(240,206,126,0.5); background: rgba(0,0,0,0.16); color: var(--cream);
+  font-family: var(--font); -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  transition: background .12s ease, transform .1s ease, border-color .12s ease;
+}
+.cr-zone:hover:not(:disabled) { background: rgba(240,206,126,0.1); border-color: var(--gold-bright); }
+.cr-zone:active:not(:disabled) { transform: scale(0.98); background: rgba(240,206,126,0.18); }
+.cr-zone:disabled { opacity: 0.42; cursor: not-allowed; }
+.cr-zn { font-family: var(--font-display); font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; font-size: 13px; color: var(--gold-bright); line-height: 1.15; }
+.cr-pay { font-size: 10.5px; color: var(--cream-dim); line-height: 1.25; }
+.cr-pay.big { font-size: 14px; font-weight: 800; color: var(--cream); }
+.cr-pass, .cr-dp { min-height: 104px; }
+.cr-pass .cr-zn, .cr-dp .cr-zn { font-size: 15px; }
+.cr-pass { border-color: var(--gold-bright); }
+.cr-field { min-height: 92px; }
+.cr-fnums { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+.cr-fn {
+  position: relative; min-width: 30px; height: 30px; padding: 0 2px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 800; font-size: 15px; color: var(--cream);
+  border: 1px solid rgba(239,228,198,0.3); background: rgba(0,0,0,0.25);
+}
+.cr-fn.x { border-color: var(--gold-bright); color: var(--gold-bright); margin-right: 8px; }
+.cr-fn sup { position: absolute; left: 50%; top: 100%; transform: translate(-50%, -3px); font-family: var(--font); font-size: 8.5px; font-weight: 800; color: var(--gold-bright); white-space: nowrap; line-height: 1; }
+.cr-fnums { padding-bottom: 6px; }
+.cr-slot { display: flex; height: 24px; align-items: center; justify-content: center; }
+.cr-badge {
+  display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px 2px 3px; border-radius: 999px;
+  background: rgba(0,0,0,0.6); border: 1px solid var(--gold); color: var(--gold-bright);
+  font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums; animation: crPuck .3s cubic-bezier(.2,1.4,.4,1) both;
+}
+.cr-badge .chip-icon { width: 16px; height: 16px; box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 3px var(--card-face); }
+.cr-badge em { font-style: normal; font-weight: 600; font-size: 9px; color: var(--cream-dim); letter-spacing: 0.04em; text-transform: uppercase; }
+
+/* Chip bar */
+.cr-bar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 12px; margin-bottom: 14px; border-radius: 16px;
+  background: rgba(0,0,0,0.28); border: 1px solid var(--border);
+}
+.cr-chips { display: flex; gap: 10px; }
+.cr-chip {
+  --c: #a3262b; width: 46px; height: 46px; border-radius: 50%; border: none; position: relative;
+  font-size: 12.5px; font-weight: 800; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+  background: repeating-conic-gradient(var(--card-face) 0deg 12deg, var(--c) 12deg 45deg);
+  box-shadow: 0 3px 8px rgba(0,0,0,0.55), inset 0 0 0 4px var(--c);
+  transition: transform .12s ease, box-shadow .12s ease; touch-action: manipulation;
+}
+.cr-chip::before { content: ''; position: absolute; inset: 9px; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25); }
+.cr-chip span { position: relative; }
+.cr-chip.c5 { --c: #a3262b; } .cr-chip.c25 { --c: #1f7a4d; } .cr-chip.c100 { --c: #1c1712; } .cr-chip.c500 { --c: #6b3fa0; }
+.cr-chip.sel { transform: translateY(-4px); box-shadow: 0 0 0 3px var(--gold-bright), 0 0 16px 3px rgba(240,206,126,0.6), inset 0 0 0 4px var(--c); }
+.cr-barbtns { display: flex; align-items: center; gap: 10px; }
+.cr-onbet { font-size: 12px; color: var(--cream-dim); }
+.cr-onbet strong { color: var(--gold-bright); font-size: 15px; font-variant-numeric: tabular-nums; }
+.cr-clear { padding: 6px 16px; font-size: 12px; font-weight: 700; border-radius: 999px; color: var(--gold-bright); background: rgba(0,0,0,0.35); border: 1px solid var(--border); }
+
+/* Panels */
+.cr-panel { margin-bottom: 14px; padding: 12px 14px; border-radius: 16px; background: rgba(0,0,0,0.28); border: 1px solid var(--border); }
+.cr-ptitle { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); margin-bottom: 8px; }
+.cr-empty { font-size: 13px; color: var(--text-tertiary); }
+.cr-prow { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
+.cr-prow + .cr-prow { border-top: 1px solid rgba(239,228,198,0.08); }
+.cr-pinfo { flex: 1 1 auto; min-width: 0; }
+.cr-pname { font-size: 13px; font-weight: 700; color: var(--cream); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cr-pbets { font-size: 11px; color: var(--cream-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cr-ptotal { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--gold-bright); font-variant-numeric: tabular-nums; font-size: 13px; flex-shrink: 0; }
+.cr-ptotal .chip-icon { width: 16px; height: 16px; }
+.cr-pnet { font-size: 12px; padding: 1px 8px; border-radius: 999px; background: rgba(0,0,0,0.4); }
+.cr-pnet.win, .cr-line.win { color: #7fdca2; }
+.cr-pnet.lose, .cr-line.lose { color: var(--red-bright); }
+.cr-pnet.push, .cr-line.push { color: var(--cream-dim); }
+.cr-line { display: flex; justify-content: space-between; font-size: 13px; padding: 2px 0; }
+.cr-line.net { margin-top: 5px; padding-top: 6px; border-top: 1px solid rgba(239,228,198,0.12); font-weight: 800; }
+.cr-res { border-color: rgba(240,206,126,0.45); }
+.cr-err {
+  background: rgba(200,60,60,0.15); border: 1px solid var(--red-bright); border-radius: 10px; padding: 10px 12px; margin-bottom: 14px;
+  font-size: 12px; color: var(--red-bright); display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.cr-foot { text-align: center; font-size: 11px; color: var(--text-tertiary); margin: 4px 8px 0; }
+
+@media (max-width: 380px) {
+  .cr-zn { font-size: 12px; }
+  .cr-chip { width: 42px; height: 42px; }
+  .cr-chips { gap: 8px; }
+  .cr-dice { gap: 36px; }
+}
+@media (min-width: 700px) {
+  .cr-zone { min-height: 92px; }
+  .cr-pass, .cr-dp { min-height: 132px; }
+  .cr-zn { font-size: 15px; }
+  .cr-pass .cr-zn, .cr-dp .cr-zn { font-size: 19px; }
+  .cr-pay { font-size: 12px; }
+  .cr-chip { width: 54px; height: 54px; font-size: 14px; }
+}
+
 </style>
 </head>
 <body>
@@ -849,7 +1251,7 @@ async function signIn(email, password) {
     render();
   }
 }
-function signOut() { auth.signOut(); state.screen = 'home'; leaveBlackjackScreen(); leavePokerScreen(); }
+function signOut() { auth.signOut(); state.screen = 'home'; leaveBlackjackScreen(); leavePokerScreen(); leaveRouletteScreen(); leaveCrapsScreen(); }
 
 // Applies a chip delta (+/-) with a transaction so two quick writes can
 // never race each other and clobber one balance.
@@ -922,6 +1324,16 @@ function renderInner(root) {
   if (state.screen === 'poker') {
     root.innerHTML = renderPokerScreen();
     attachPokerHandlers();
+    return;
+  }
+  if (state.screen === 'roulette') {
+    root.innerHTML = renderRouletteScreen();
+    attachRouletteHandlers();
+    return;
+  }
+  if (state.screen === 'craps') {
+    root.innerHTML = renderCrapsScreen();
+    attachCrapsHandlers();
     return;
   }
   root.innerHTML = renderHomeScreen();
@@ -1018,6 +1430,18 @@ function renderHomeScreen() {
           <p>One shared table. Sit down and play against your coworkers.</p>
           <div class="lobby-meta"><span class="lobby-tag">2–8 players</span><span class="lobby-play">Play ›</span></div>
         </div>
+        <div class="lobby-tile" id="home-play-roulette">
+          <div class="lobby-art lobby-art-roulette"><div class="lobby-wheel"></div><span class="mini-chip b"></span><span class="mini-chip"></span></div>
+          <h2>Roulette</h2>
+          <p>One shared wheel. Place your bets, watch the spin — straight up pays 35 to 1.</p>
+          <div class="lobby-meta"><span class="lobby-tag">Everyone plays</span><span class="lobby-play">Play ›</span></div>
+        </div>
+        <div class="lobby-tile" id="home-play-craps">
+          <div class="lobby-art lobby-art-craps"><span class="lobby-die">⚄</span><span class="lobby-die d2">⚂</span><span class="mini-chip b"></span></div>
+          <h2>Craps</h2>
+          <p>Pass line, field, and the point. Everyone at the table shares each roll.</p>
+          <div class="lobby-meta"><span class="lobby-tag">Everyone plays</span><span class="lobby-play">Play ›</span></div>
+        </div>
       </div>
       <div class="lobby-foot">Just for fun — chips have no real value.</div>
     </div>
@@ -1029,6 +1453,16 @@ function attachHomeHandlers() {
   document.getElementById('home-play-blackjack')?.addEventListener('click', () => {
     state.screen = 'blackjack';
     enterBlackjackScreen();
+    render();
+  });
+  document.getElementById('home-play-roulette')?.addEventListener('click', () => {
+    state.screen = 'roulette';
+    enterRouletteScreen();
+    render();
+  });
+  document.getElementById('home-play-craps')?.addEventListener('click', () => {
+    state.screen = 'craps';
+    enterCrapsScreen();
     render();
   });
   document.getElementById('home-play-poker')?.addEventListener('click', () => {
@@ -2954,6 +3388,1458 @@ function attachPokerHandlers() {
     render();
   }));
 }
+</script>
+<script>
+// ===== Roulette =====
+// ============================================================================
+// ROULETTE — one shared European (single-zero) table, `rouletteTables/main`.
+// No seats, no runner: roulette has no hidden information, so ANY client can
+// advance the phase with a Firestore transaction that re-checks the deadline
+// (only one wins). Chips are deducted at bet time and each player credits
+// their OWN winnings when the round reaches 'result'.
+//
+// Runs as a separate classic <script> AFTER the main script and uses its
+// globals: db, state, auth, escapeHtml, avatarHtml, applyChipDelta, render,
+// Sound, PK_SKYLINE_SVG. Everything here is prefixed rl / RL_.
+// ============================================================================
+
+const RL_TABLE_ID = 'main';
+const RL_BETTING_MS = 20000;
+const RL_SPIN_MS = 7000;
+const RL_RESULT_MS = 8000;
+const RL_HISTORY_MAX = 15;
+const RL_CHIP_VALUES = [5, 25, 100, 500];
+// Standard European single-zero wheel order, clockwise from the zero.
+const RL_WHEEL_ORDER = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
+const RL_REDS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
+const RL_SETTLED_KEY = 'rlLastSettledRound';
+
+let rlSettledMem = null;      // in-memory copy of the localStorage guard ("uid:round")
+let rlWheelSvgCache = null;
+
+// ---------------------------------------------------------------------------
+// PURE LOGIC (no DOM, no Firebase) — unit-tested in roulette.test.js
+// ---------------------------------------------------------------------------
+function rlColor(n) { return n === 0 ? 'green' : (RL_REDS.has(n) ? 'red' : 'black'); }
+
+// Profit multiplier (on top of the returned stake) or null for an invalid key.
+function rlBetMult(key) {
+  if (typeof key !== 'string') return null;
+  const m = /^n(0|[1-9]\d?)$/.exec(key);
+  if (m) return parseInt(m[1], 10) <= 36 ? 35 : null;
+  switch (key) {
+    case 'red': case 'black': case 'odd': case 'even': case 'low': case 'high': return 1;
+    case 'd1': case 'd2': case 'd3': case 'c1': case 'c2': case 'c3': return 2;
+  }
+  return null;
+}
+function rlValidKey(key) { return rlBetMult(key) !== null; }
+
+function rlBetWins(key, n) {
+  const m = /^n(0|[1-9]\d?)$/.exec(key);
+  if (m) return parseInt(m[1], 10) === n;
+  if (n === 0) return false; // zero loses every outside bet
+  switch (key) {
+    case 'red': return RL_REDS.has(n);
+    case 'black': return !RL_REDS.has(n);
+    case 'odd': return n % 2 === 1;
+    case 'even': return n % 2 === 0;
+    case 'low': return n >= 1 && n <= 18;
+    case 'high': return n >= 19 && n <= 36;
+    case 'd1': return n >= 1 && n <= 12;
+    case 'd2': return n >= 13 && n <= 24;
+    case 'd3': return n >= 25 && n <= 36;
+    case 'c1': return n % 3 === 1;
+    case 'c2': return n % 3 === 2;
+    case 'c3': return n % 3 === 0;
+  }
+  return false;
+}
+
+// Total chips credited back for one bet (stake * (mult + 1) on a win, else 0).
+function rlBetReturn(betKey, amount, number) {
+  const mult = rlBetMult(betKey);
+  if (mult === null || !(amount > 0) || !(number >= 0 && number <= 36)) return 0;
+  return rlBetWins(betKey, number) ? amount * (mult + 1) : 0;
+}
+
+// `bets` is either a chips map {betKey: amount} or a player entry {chips:{...}}.
+// Returns { stake, ret, net } (invalid keys / non-positive amounts ignored).
+function rlSettleAmount(bets, number) {
+  const chips = bets && bets.chips && typeof bets.chips === 'object' ? bets.chips : (bets || {});
+  let stake = 0, ret = 0;
+  for (const key of Object.keys(chips)) {
+    const amt = chips[key];
+    if (!rlValidKey(key) || !(amt > 0)) continue;
+    stake += amt;
+    ret += rlBetReturn(key, amt, number);
+  }
+  return { stake, ret, net: ret - stake };
+}
+
+function rlDefaultDoc() {
+  return { round: 0, phase: 'result', phaseEndsAt: 0, result: null, bets: {}, prev: null, history: [] };
+}
+function rlNormalize(data) {
+  const d = Object.assign(rlDefaultDoc(), data || {});
+  if (!d.bets || typeof d.bets !== 'object') d.bets = {};
+  if (!Array.isArray(d.history)) d.history = [];
+  if (typeof d.phaseEndsAt !== 'number') d.phaseEndsAt = 0;
+  return d;
+}
+
+// Returns the fields to write to advance the table, or null if not due yet.
+// randomInt(n) must return an integer in [0, n).
+function rlNextPhase(doc, nowMs, randomInt) {
+  const d = rlNormalize(doc);
+  if (!(nowMs >= d.phaseEndsAt)) return null;
+  if (d.phase === 'betting') {
+    const n = randomInt(37);
+    return { phase: 'spinning', result: { number: n, color: rlColor(n) }, phaseEndsAt: nowMs + RL_SPIN_MS };
+  }
+  if (d.phase === 'spinning') {
+    let res = d.result;
+    if (!res || typeof res.number !== 'number') { const n = randomInt(37); res = { number: n, color: rlColor(n) }; }
+    return {
+      phase: 'result', result: res, phaseEndsAt: nowMs + RL_RESULT_MS,
+      history: d.history.concat([res.number]).slice(-RL_HISTORY_MAX),
+    };
+  }
+  // 'result' (or anything unknown) -> next betting round
+  return {
+    round: d.round + 1, phase: 'betting', phaseEndsAt: nowMs + RL_BETTING_MS,
+    prev: d.result ? { round: d.round, result: d.result, bets: d.bets } : null,
+    bets: {}, result: null,
+  };
+}
+
+function rlRandInt(n) {
+  const c = (typeof crypto !== 'undefined' && crypto.getRandomValues) ? crypto : null;
+  if (!c) return Math.floor(Math.random() * n);
+  const lim = Math.floor(0x100000000 / n) * n; // rejection sampling: no modulo bias
+  const a = new Uint32Array(1);
+  let x;
+  do { c.getRandomValues(a); x = a[0]; } while (x >= lim);
+  return x % n;
+}
+
+function rlSumChips(chips) {
+  let t = 0;
+  for (const k of Object.keys(chips || {})) if (rlValidKey(k) && chips[k] > 0) t += chips[k];
+  return t;
+}
+function rlBettingOpen(t, now) { return !!t && t.phase === 'betting' && now < t.phaseEndsAt; }
+
+// Which finished round should I be paid for right now (or null).
+function rlSettleSource(t) {
+  if (!t) return null;
+  if (t.phase === 'result' && t.result) return { round: t.round, number: t.result.number, bets: t.bets };
+  if ((t.phase === 'betting' || t.phase === 'spinning') && t.prev && t.prev.result) {
+    return { round: t.prev.round, number: t.prev.result.number, bets: t.prev.bets || {} };
+  }
+  return null;
+}
+
+// Wheel plan: rest angle for a number (pocket under the top marker), or the
+// spin parameters for a mid-spin table. Pure so a mid-spin visitor resumes.
+function rlRestAngle(n) {
+  const idx = RL_WHEEL_ORDER.indexOf(n);
+  return idx <= 0 ? 0 : -idx * (360 / 37);
+}
+function rlWheelPlan(t, now) {
+  const lastHist = t.history.length ? t.history[t.history.length - 1]
+    : (t.prev && t.prev.result ? t.prev.result.number : 0);
+  if (t.phase === 'spinning' && t.result) {
+    const dur = RL_SPIN_MS - 300;
+    const elapsed = now - (t.phaseEndsAt - RL_SPIN_MS);
+    if (elapsed < dur) {
+      const from = rlRestAngle(lastHist), target = rlRestAngle(t.result.number);
+      const delta = (((target - from) % 360) + 360) % 360;
+      return { mode: 'spin', from, to: from + 360 * 5 + delta, ballTo: -360 * 7, elapsed: Math.max(0, Math.round(elapsed)), dur };
+    }
+    return { mode: 'rest', angle: rlRestAngle(t.result.number) };
+  }
+  if (t.phase === 'result' && t.result) return { mode: 'rest', angle: rlRestAngle(t.result.number) };
+  return { mode: 'rest', angle: rlRestAngle(lastHist) };
+}
+
+function rlStatusInfo(t, now) {
+  if (!t.round && t.phase === 'result') return { text: 'Starting the table…', pct: 0 };
+  const left = Math.max(0, t.phaseEndsAt - now);
+  const secs = Math.ceil(left / 1000);
+  if (t.phase === 'betting') {
+    if (left > 0) return { text: `Place your bets — ${secs}s`, pct: Math.min(1, left / RL_BETTING_MS) };
+    return { text: 'No more bets', pct: 0 };
+  }
+  if (t.phase === 'spinning') return { text: 'No more bets', pct: Math.min(1, left / RL_SPIN_MS) };
+  if (t.result) return { text: `Winning number ${t.result.number} ${t.result.color}`, pct: Math.min(1, left / RL_RESULT_MS) };
+  return { text: 'Next round starting…', pct: 0 };
+}
+
+function rlDescribe(n) {
+  if (n === 0) return 'Zero';
+  return [rlColor(n) === 'red' ? 'Red' : 'Black', n % 2 ? 'Odd' : 'Even', n <= 18 ? 'Low' : 'High'].join(' · ');
+}
+function rlFmt(n) {
+  if (n >= 10000) return Math.round(n / 1000) + 'k';
+  if (n >= 1000) return (n / 1000).toFixed(1).replace('.0', '') + 'k';
+  return String(n);
+}
+function rlChipClass(a) { return a >= 500 ? 'c500' : a >= 100 ? 'c100' : a >= 25 ? 'c25' : 'c5'; }
+
+// ---------------------------------------------------------------------------
+// MODULE STATE (state.rl is created lazily)
+// ---------------------------------------------------------------------------
+function rlEnsureState() {
+  if (!state.rl) {
+    state.rl = {
+      table: null, chip: 25, lastError: null, undo: [], lastBets: null, lastSettle: null,
+      unsub: null, timer: null, lastAdvanceAttempt: 0, advancing: false,
+      lastTickKey: null, lastRenderKey: null, q: Promise.resolve(), down: null, exp: null,
+    };
+  }
+  return state.rl;
+}
+function rlUid() { return state.user ? state.user.uid : null; }
+function rlTableRef() { return db.collection('rouletteTables').doc(RL_TABLE_ID); }
+function rlJitter() {
+  const uid = rlUid() || '';
+  let h = 0;
+  for (let i = 0; i < uid.length; i++) h = (h * 31 + uid.charCodeAt(i)) >>> 0;
+  return h % 1500;
+}
+function rlErrMsg(e) { return (e && e.message) ? e.message : String(e); }
+function rlSetError(msg) { const rl = rlEnsureState(); rl.lastError = msg; try { render(); } catch (e) { console.error(e); } }
+
+// Balance I can safely spend: state.chips can lag a moment behind my own
+// just-issued applyChipDelta, so remember the expected value for a few secs.
+function rlAvailable() {
+  const rl = rlEnsureState();
+  let a = state.chips == null ? 0 : state.chips;
+  if (rl.exp && Date.now() < rl.exp.until) a = Math.min(a, rl.exp.value);
+  return a;
+}
+function rlNoteDelta(delta) {
+  const rl = rlEnsureState();
+  const base = rlAvailable();
+  rl.exp = { value: Math.max(0, base + delta), until: Date.now() + 4000 };
+}
+
+function rlEnqueue(fn) {
+  const rl = rlEnsureState();
+  const p = rl.q.then(fn).catch(e => {
+    console.error('roulette action failed', e);
+    rl.lastError = rlErrMsg(e);
+    try { render(); } catch (e2) { console.error(e2); }
+  });
+  rl.q = p;
+  return p;
+}
+
+// ---------------------------------------------------------------------------
+// ENTER / LEAVE
+// ---------------------------------------------------------------------------
+function enterRouletteScreen() {
+  const rl = rlEnsureState();
+  if (rl.unsub) { rl.unsub(); rl.unsub = null; }
+  if (rl.timer) { clearInterval(rl.timer); rl.timer = null; }
+  rl.table = null; rl.lastError = null; rl.undo = []; rl.lastTickKey = null; rl.lastRenderKey = null;
+  rl.lastAdvanceAttempt = 0; rl.advancing = false; rl.down = null;
+  rl.unsub = rlTableRef().onSnapshot(snap => {
+    rl.table = rlNormalize(snap.exists ? snap.data() : null);
+    try { rlMaybeSettle(); } catch (e) { console.error('rlMaybeSettle failed', e); rl.lastError = rlErrMsg(e); }
+    try { rlMaybeAdvance(); } catch (e) { console.error('rlMaybeAdvance failed', e); rl.lastError = rlErrMsg(e); }
+    if (state.screen === 'roulette') render();
+  }, err => {
+    console.error('roulette table listener error', err);
+    rl.lastError = rlErrMsg(err);
+    if (state.screen === 'roulette') render();
+  });
+  rl.timer = setInterval(rlTick, 1000);
+}
+function leaveRouletteScreen() {
+  const rl = state.rl;
+  if (!rl) return;
+  if (rl.unsub) { rl.unsub(); rl.unsub = null; }
+  if (rl.timer) { clearInterval(rl.timer); rl.timer = null; }
+  rlUnbindRoot();
+  rl.table = null; rl.lastError = null; rl.undo = []; rl.down = null;
+}
+
+// ---------------------------------------------------------------------------
+// PHASE ADVANCE (any client; transaction re-checks the deadline)
+// ---------------------------------------------------------------------------
+function rlMaybeAdvance() {
+  const rl = state.rl;
+  if (!rl || !rl.table || rl.advancing || !rlUid()) return;
+  const now = Date.now();
+  if (now < rl.table.phaseEndsAt + rlJitter()) return;
+  if (now - rl.lastAdvanceAttempt < 3000) return;
+  rl.lastAdvanceAttempt = now;
+  rl.advancing = true;
+  const ref = rlTableRef();
+  db.runTransaction(async tx => {
+    const snap = await tx.get(ref);
+    const cur = rlNormalize(snap.exists ? snap.data() : null);
+    const fields = rlNextPhase(cur, Date.now(), rlRandInt); // re-check inside the txn
+    if (!fields) return false;
+    if (snap.exists) tx.update(ref, fields); else tx.set(ref, Object.assign(rlDefaultDoc(), fields));
+    return true;
+  }).catch(e => {
+    console.error('roulette advance failed', e);
+    // Contention just means someone else advanced first; only show real faults.
+    if (e && e.code && e.code !== 'aborted' && e.code !== 'failed-precondition') {
+      rl.lastError = 'Table update failed: ' + rlErrMsg(e);
+      if (state.screen === 'roulette') render();
+    }
+  }).then(() => { rl.advancing = false; });
+}
+
+// ---------------------------------------------------------------------------
+// SETTLEMENT — each player pays themselves, once per round
+// ---------------------------------------------------------------------------
+function rlGetSettled() {
+  let v = null;
+  try { v = localStorage.getItem(RL_SETTLED_KEY); } catch (e) { /* ignore */ }
+  return { mem: rlSettledMem, ls: v };
+}
+function rlSetSettled(tag) {
+  rlSettledMem = tag;
+  try { localStorage.setItem(RL_SETTLED_KEY, tag); } catch (e) { /* ignore */ }
+}
+function rlMaybeSettle() {
+  const rl = state.rl;
+  const uid = rlUid();
+  if (!rl || !rl.table || !uid) return;
+  const src = rlSettleSource(rl.table);
+  if (!src) return;
+  const tag = uid + ':' + src.round;
+  const s = rlGetSettled();
+  if (s.mem === tag || s.ls === tag) return;
+  rlSetSettled(tag); // record BEFORE crediting so a re-entrant snapshot can't double pay
+  const entry = src.bets ? src.bets[uid] : null;
+  const res = rlSettleAmount(entry, src.number);
+  if (res.stake <= 0) return;
+  const mine = {};
+  for (const k of Object.keys(entry.chips || {})) if (rlValidKey(k) && entry.chips[k] > 0) mine[k] = entry.chips[k];
+  rl.lastBets = mine;
+  rl.lastSettle = { round: src.round, number: src.number, stake: res.stake, ret: res.ret, net: res.net };
+  if (res.ret > 0) {
+    rlNoteDelta(res.ret);
+    Promise.resolve(applyChipDelta(res.ret)).catch(e => { console.error('roulette payout failed', e); rl.lastError = 'Payout failed: ' + rlErrMsg(e); });
+  }
+  if (res.net > 0) { try { Sound.win(); } catch (e) { /* ignore */ } }
+}
+
+// ---------------------------------------------------------------------------
+// TICK — once a second while the screen is up
+// ---------------------------------------------------------------------------
+function rlTick() {
+  const rl = state.rl;
+  if (state.screen !== 'roulette' || !rl || !rl.table) return;
+  try { rlMaybeSettle(); rlMaybeAdvance(); } catch (e) { console.error('rlTick failed', e); }
+  const t = rl.table, now = Date.now();
+  if (t.phase === 'betting' && now < t.phaseEndsAt) {
+    const secs = Math.ceil((t.phaseEndsAt - now) / 1000);
+    const key = t.round + ':' + secs;
+    if (secs <= 5 && rl.lastTickKey !== key) { rl.lastTickKey = key; try { Sound.tick(); } catch (e) { /* ignore */ } }
+  }
+  const rk = t.round + '|' + t.phase + '|' + (rlBettingOpen(t, now) ? 1 : 0);
+  if (rk !== rl.lastRenderKey) { render(); return; }
+  // Cheap in-place update: a full re-render every second would swallow taps.
+  const info = rlStatusInfo(t, now);
+  const el = document.getElementById('rl-status');
+  if (el && el.textContent !== info.text) el.textContent = info.text;
+  const fill = document.getElementById('rl-timer-fill');
+  if (fill) fill.style.width = (info.pct * 100).toFixed(1) + '%';
+}
+
+// ---------------------------------------------------------------------------
+// ACTIONS
+// ---------------------------------------------------------------------------
+function rlPlayerFields() {
+  const emp = state.employee || {};
+  return { name: emp.name || (state.user && state.user.displayName) || 'Player', photoURL: emp.photoURL || null };
+}
+function rlGuardBetting() {
+  const rl = state.rl;
+  if (!rlUid()) throw new Error('Sign in to place bets.');
+  if (!rl.table || !rlBettingOpen(rl.table, Date.now())) throw new Error('Betting is closed — wait for the next round.');
+}
+
+// Writes bets inside a transaction that re-checks the phase. Returns the round.
+async function rlWriteBets(map) {
+  const uid = rlUid(), ref = rlTableRef(), inc = firebase.firestore.FieldValue.increment;
+  const chips = {};
+  for (const k of Object.keys(map)) chips[k] = inc(map[k]);
+  const pf = rlPlayerFields();
+  return db.runTransaction(async tx => {
+    const snap = await tx.get(ref);
+    const d = snap.exists ? snap.data() : null;
+    if (!d || d.phase !== 'betting' || Date.now() >= d.phaseEndsAt) throw new Error('Betting is closed — wait for the next round.');
+    tx.set(ref, { bets: { [uid]: { name: pf.name, photoURL: pf.photoURL, chips } } }, { merge: true });
+    return d.round;
+  });
+}
+
+function rlPlaceBet(key, amount) {
+  return rlEnqueue(async () => {
+    const rl = state.rl;
+    if (!rlValidKey(key) || RL_CHIP_VALUES.indexOf(amount) < 0) throw new Error('Invalid bet.');
+    rlGuardBetting();
+    if (amount > rlAvailable()) throw new Error('Not enough chips for that bet.');
+    try { Sound.chip(); } catch (e) { /* ignore */ }
+    rlNoteDelta(-amount);
+    await applyChipDelta(-amount);
+    let round;
+    try { round = await rlWriteBets({ [key]: amount }); }
+    catch (e) {
+      rlNoteDelta(amount); await applyChipDelta(amount); // refund: the table never got the bet
+      throw new Error('Bet not placed (chips refunded): ' + rlErrMsg(e));
+    }
+    rl.undo.push({ round, key, amount });
+    if (rl.undo.length > 300) rl.undo.shift();
+    rl.lastError = null;
+    render();
+  });
+}
+
+function rlUndoLast() {
+  return rlEnqueue(async () => {
+    const rl = state.rl, uid = rlUid();
+    rlGuardBetting();
+    while (rl.undo.length && rl.undo[rl.undo.length - 1].round !== rl.table.round) rl.undo.pop();
+    const entry = rl.undo[rl.undo.length - 1];
+    if (!entry) throw new Error('Nothing to undo.');
+    const ref = rlTableRef(), F = firebase.firestore.FieldValue;
+    const ok = await db.runTransaction(async tx => {
+      const snap = await tx.get(ref);
+      const d = snap.exists ? snap.data() : null;
+      if (!d || d.phase !== 'betting' || Date.now() >= d.phaseEndsAt) throw new Error('Betting is closed — wait for the next round.');
+      const cur = (d.bets && d.bets[uid] && d.bets[uid].chips && d.bets[uid].chips[entry.key]) || 0;
+      if (cur < entry.amount) return false;
+      const path = 'bets.' + uid + '.chips.' + entry.key;
+      tx.update(ref, { [path]: cur - entry.amount <= 0 ? F.delete() : F.increment(-entry.amount) });
+      return true;
+    });
+    rl.undo.pop();
+    if (!ok) throw new Error('Nothing to undo.');
+    rlNoteDelta(entry.amount);
+    await applyChipDelta(entry.amount);
+    rl.lastError = null;
+    render();
+  });
+}
+
+function rlClearBets() {
+  return rlEnqueue(async () => {
+    const rl = state.rl, uid = rlUid();
+    rlGuardBetting();
+    const ref = rlTableRef(), F = firebase.firestore.FieldValue;
+    const refund = await db.runTransaction(async tx => {
+      const snap = await tx.get(ref);
+      const d = snap.exists ? snap.data() : null;
+      if (!d || d.phase !== 'betting' || Date.now() >= d.phaseEndsAt) throw new Error('Betting is closed — wait for the next round.');
+      const mine = d.bets && d.bets[uid];
+      const total = mine ? rlSumChips(mine.chips) : 0;
+      if (mine) tx.update(ref, { ['bets.' + uid]: F.delete() });
+      return total;
+    });
+    rl.undo = [];
+    if (refund > 0) { rlNoteDelta(refund); await applyChipDelta(refund); }
+    rl.lastError = null;
+    render();
+  });
+}
+
+function rlRepeatBets() {
+  return rlEnqueue(async () => {
+    const rl = state.rl, uid = rlUid();
+    rlGuardBetting();
+    let src = rl.lastBets;
+    if (!src && rl.table.prev && rl.table.prev.bets && rl.table.prev.bets[uid]) src = rl.table.prev.bets[uid].chips;
+    const map = {};
+    let total = 0;
+    for (const k of Object.keys(src || {})) {
+      if (rlValidKey(k) && src[k] > 0) { map[k] = src[k]; total += src[k]; }
+    }
+    if (!total) throw new Error('No previous bets to repeat.');
+    if (total > rlAvailable()) throw new Error(`Not enough chips to repeat your last bets (${total}).`);
+    try { Sound.chip(); } catch (e) { /* ignore */ }
+    rlNoteDelta(-total);
+    await applyChipDelta(-total);
+    let round;
+    try { round = await rlWriteBets(map); }
+    catch (e) {
+      rlNoteDelta(total); await applyChipDelta(total);
+      throw new Error('Bets not placed (chips refunded): ' + rlErrMsg(e));
+    }
+    for (const k of Object.keys(map)) rl.undo.push({ round, key: k, amount: map[k] });
+    rl.lastError = null;
+    render();
+  });
+}
+
+// ---------------------------------------------------------------------------
+// WHEEL ART (original SVG; built once)
+// ---------------------------------------------------------------------------
+function rlPol(r, deg) { const a = deg * Math.PI / 180; return [100 + r * Math.sin(a), 100 - r * Math.cos(a)]; }
+function rlWheelSvgs() {
+  if (rlWheelSvgCache) return rlWheelSvgCache;
+  const step = 360 / 37, f = v => v.toFixed(2);
+  let pockets = '';
+  RL_WHEEL_ORDER.forEach((n, i) => {
+    const a0 = (i - 0.5) * step, a1 = (i + 0.5) * step;
+    const p0 = rlPol(90, a0), p1 = rlPol(90, a1), q1 = rlPol(62, a1), q0 = rlPol(62, a0);
+    const fill = n === 0 ? '#1f8a56' : (RL_REDS.has(n) ? '#b3282d' : '#15110d');
+    pockets += `<path d="M${f(p0[0])} ${f(p0[1])} A90 90 0 0 1 ${f(p1[0])} ${f(p1[1])} L${f(q1[0])} ${f(q1[1])} A62 62 0 0 0 ${f(q0[0])} ${f(q0[1])} Z" fill="${fill}" stroke="#d9b45a" stroke-width="0.6"/>`;
+    pockets += `<text x="100" y="${f(100 - 80)}" transform="rotate(${f(i * step)} 100 100)" text-anchor="middle" dominant-baseline="central" font-size="8" font-weight="700" fill="#efe4c6" font-family="Inter,Arial,sans-serif">${n}</text>`;
+  });
+  const hub = `
+    <circle cx="100" cy="100" r="62" fill="url(#rlWood)" stroke="#d9b45a" stroke-width="1.2"/>
+    <circle cx="100" cy="100" r="50" fill="none" stroke="rgba(240,206,126,0.35)" stroke-width="0.8"/>
+    <circle cx="100" cy="100" r="40" fill="url(#rlCone)" stroke="#a87a2c" stroke-width="1"/>
+    <g stroke="#f0ce7e" stroke-width="3" stroke-linecap="round">
+      <line x1="100" y1="64" x2="100" y2="136"/><line x1="64" y1="100" x2="136" y2="100"/>
+    </g>
+    <g fill="#f0ce7e"><circle cx="100" cy="62" r="4.2"/><circle cx="100" cy="138" r="4.2"/><circle cx="62" cy="100" r="4.2"/><circle cx="138" cy="100" r="4.2"/></g>
+    <circle cx="100" cy="100" r="11" fill="url(#rlGold)" stroke="#6b4a14" stroke-width="1"/>`;
+  const defs = `<defs>
+    <linearGradient id="rlGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fdedbb"/><stop offset=".45" stop-color="#cea03f"/><stop offset="1" stop-color="#8a5f1c"/></linearGradient>
+    <radialGradient id="rlWood" cx=".5" cy=".4" r=".7"><stop offset="0" stop-color="#4a2a14"/><stop offset="1" stop-color="#1c0f06"/></radialGradient>
+    <radialGradient id="rlCone" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#3a3a3a"/><stop offset=".6" stop-color="#17140f"/><stop offset="1" stop-color="#050403"/></radialGradient>
+  </defs>`;
+  rlWheelSvgCache = {
+    bezel: `<svg viewBox="0 0 200 200" aria-hidden="true">${defs}
+      <circle cx="100" cy="100" r="100" fill="url(#rlGold)"/>
+      <circle cx="100" cy="100" r="97" fill="#241307"/>
+      <circle cx="100" cy="100" r="95.5" fill="none" stroke="rgba(240,206,126,0.5)" stroke-width="0.8"/>
+      <circle cx="100" cy="100" r="92" fill="#0d0905"/>
+      <circle cx="100" cy="100" r="90.5" fill="none" stroke="#a87a2c" stroke-width="1"/></svg>`,
+    wheel: `<svg viewBox="0 0 200 200" aria-hidden="true">${pockets}${hub}</svg>` // gradients come from the bezel svg's <defs>,
+  };
+  return rlWheelSvgCache;
+}
+
+function rlWheelHtml(t, now) {
+  const plan = rlWheelPlan(t, now);
+  const svgs = rlWheelSvgs();
+  let wStyle, bLayer = '', bStyle = '';
+  if (plan.mode === 'spin') {
+    const common = `${plan.dur}ms`, delay = `-${plan.elapsed}ms`;
+    wStyle = `--rl-from:${plan.from.toFixed(3)}deg;--rl-to:${plan.to.toFixed(3)}deg;animation:rl-wheel-spin ${common} cubic-bezier(.16,.62,.22,1) ${delay} 1 both;`;
+    bLayer = `--rl-ball-to:${plan.ballTo}deg;animation:rl-ball-orbit ${common} cubic-bezier(.2,.55,.3,1) ${delay} 1 both;`;
+    bStyle = `animation:rl-ball-drop ${common} ease-in-out ${delay} 1 both;`;
+  } else {
+    wStyle = `transform:rotate(${plan.angle.toFixed(3)}deg);`;
+  }
+  return `
+    <div class="rl-wheel-wrap" data-rl-mode="${plan.mode}">
+      <div class="rl-bezel">${svgs.bezel}</div>
+      <div class="rl-wheel" style="${wStyle}">${svgs.wheel}</div>
+      <div class="rl-ball-layer" style="${bLayer}"><i class="rl-ball" style="${bStyle}"></i></div>
+      <div class="rl-marker"></div>
+    </div>`;
+}
+
+// ---------------------------------------------------------------------------
+// RENDER
+// ---------------------------------------------------------------------------
+function rlTopbar() {
+  return `
+    <div class="topbar rl-topbar">
+      <button class="btn btn-ghost btn-sm" id="rl-done" data-rl-act="done">Done</button>
+      <h1 class="page-title casino-title rl-title">Roulette</h1>
+      <div class="rl-top-right">
+        <button class="sound-toggle" id="rl-sound-toggle" data-rl-act="sound" title="${Sound.enabled ? 'Mute sound' : 'Unmute sound'}">${Sound.enabled ? '🔊' : '🔇'}</button>
+        <span class="chip-count rl-balance"><span class="chip-icon"></span><span id="rl-balance">${state.chips == null ? '…' : state.chips}</span></span>
+      </div>
+    </div>`;
+}
+
+function rlCell(key, label, cls, span, myChips, opts) {
+  const amt = myChips[key] || 0;
+  const win = opts.winKeys && opts.winKeys.has(key);
+  return `<button class="rl-cell ${cls}${span > 1 ? ' rl-wide' : ''}${win ? ' rl-hit' : ''}" data-rl-act="bet" data-rl-key="${key}" style="${span > 1 ? `grid-column:span ${span};` : ''}" aria-label="Bet on ${escapeHtml(label)}">`
+    + `<span class="rl-lbl">${label}</span>`
+    + (amt > 0 ? `<span class="rl-stack ${rlChipClass(amt)}">${rlFmt(amt)}</span>` : '')
+    + `</button>`;
+}
+
+function rlBoardHtml(t, myChips, open) {
+  const opts = { winKeys: null };
+  if (t.phase === 'result' && t.result) {
+    opts.winKeys = new Set();
+    const all = ['red', 'black', 'odd', 'even', 'low', 'high', 'd1', 'd2', 'd3', 'c1', 'c2', 'c3'];
+    all.forEach(k => { if (rlBetWins(k, t.result.number)) opts.winKeys.add(k); });
+    opts.winKeys.add('n' + t.result.number);
+  }
+  const gap = '<i class="rl-gap"></i>';
+  let h = rlCell('n0', '0', 'green rl-zero', 12, myChips, opts) + gap;
+  const rows = [['c3', 3], ['c2', 2], ['c1', 1]]; // top row = 3,6,9..; bottom row = 1,4,7..
+  rows.forEach(([ck, off]) => {
+    for (let j = 0; j < 12; j++) {
+      const n = j * 3 + off;
+      h += rlCell('n' + n, String(n), rlColor(n), 1, myChips, opts);
+    }
+    h += rlCell(ck, '2:1', 'out rl-col', 1, myChips, opts);
+  });
+  h += rlCell('d1', '1st 12', 'out', 4, myChips, opts) + rlCell('d2', '2nd 12', 'out', 4, myChips, opts) + rlCell('d3', '3rd 12', 'out', 4, myChips, opts) + gap;
+  h += rlCell('low', '1-18', 'out', 2, myChips, opts) + rlCell('even', 'EVEN', 'out', 2, myChips, opts)
+    + rlCell('red', 'RED', 'red rl-colorbtn', 2, myChips, opts) + rlCell('black', 'BLACK', 'black rl-colorbtn', 2, myChips, opts)
+    + rlCell('odd', 'ODD', 'out', 2, myChips, opts) + rlCell('high', '19-36', 'out', 2, myChips, opts) + gap;
+  return `<div class="rl-board${open ? '' : ' rl-closed'}" id="rl-board">${h}</div>`;
+}
+
+function rlPlayersHtml(t) {
+  const uid = rlUid();
+  const num = t.phase === 'result' && t.result ? t.result.number : null;
+  const rows = Object.keys(t.bets || {}).map(id => {
+    const e = t.bets[id] || {};
+    const total = rlSumChips(e.chips);
+    return { id, name: e.name || 'Player', photoURL: e.photoURL, total, net: num == null ? null : rlSettleAmount(e, num).net };
+  }).filter(r => r.total > 0)
+    .sort((a, b) => (a.id === uid ? -1 : b.id === uid ? 1 : b.total - a.total));
+  const body = rows.length ? rows.map(r => `
+      <div class="rl-player${r.id === uid ? ' me' : ''}">
+        ${avatarHtml(r.name, r.photoURL, 30)}
+        <div class="rl-pname">${escapeHtml(r.name)}${r.id === uid ? ' <small>(you)</small>' : ''}</div>
+        <div class="rl-pstake"><span class="chip-icon rl-mini"></span>${r.total}</div>
+        ${r.net == null ? '' : `<div class="rl-net ${r.net > 0 ? 'win' : r.net < 0 ? 'lose' : ''}">${r.net > 0 ? '+' : r.net < 0 ? '−' : ''}${Math.abs(r.net)}</div>`}
+      </div>`).join('')
+    : `<div class="rl-empty">No bets on the table yet.</div>`;
+  return `<div class="rl-panel"><div class="rl-panel-title">At the table</div>${body}</div>`;
+}
+
+function renderRouletteScreen() {
+  const rl = rlEnsureState();
+  const t = rl.table;
+  if (!t) {
+    return `${rlTopbar()}<div class="content rl-content"><div style="padding:40px;text-align:center;color:var(--text-tertiary);">Loading table…</div></div>`;
+  }
+  const now = Date.now();
+  const uid = rlUid();
+  const open = rlBettingOpen(t, now);
+  rl.lastRenderKey = t.round + '|' + t.phase + '|' + (open ? 1 : 0);
+  const mine = (t.bets && t.bets[uid] && t.bets[uid].chips) || {};
+  const myTotal = rlSumChips(mine);
+  const info = rlStatusInfo(t, now);
+  const canRepeat = open && !!(rl.lastBets || (t.prev && t.prev.bets && t.prev.bets[uid]));
+  const canUndo = open && rl.undo.some(u => u.round === t.round);
+
+  const hist = t.history.length
+    ? t.history.map((n, i) => `<span class="rl-hn ${rlColor(n)}${i === t.history.length - 1 ? ' last' : ''}">${n}</span>`).join('')
+    : `<span class="rl-hempty">No spins yet</span>`;
+
+  let resultHtml = '';
+  if (t.phase === 'result' && t.result) {
+    const n = t.result.number;
+    const my = rlSettleAmount({ chips: mine }, n);
+    const mineLine = my.stake > 0
+      ? `<div class="rl-mine ${my.net > 0 ? 'win' : my.net < 0 ? 'lose' : ''}">${my.net > 0 ? `You won +${my.net}` : my.net < 0 ? `You lost ${-my.net}` : 'You broke even'}</div>`
+      : '';
+    resultHtml = `
+      <div class="rl-result">
+        <div class="rl-result-num ${t.result.color}">${n}</div>
+        <div class="rl-result-side"><div class="rl-result-word">${t.result.color.toUpperCase()}</div><div class="rl-result-desc">${rlDescribe(n)}</div>${mineLine}</div>
+      </div>`;
+  }
+
+  return `
+    ${rlTopbar()}
+    <div class="content rl-content">
+      ${rl.lastError ? `
+        <div class="rl-error">
+          <span>${escapeHtml(rl.lastError)}</span>
+          <button class="btn btn-ghost btn-sm" id="rl-dismiss-error" data-rl-act="dismiss" style="flex-shrink:0;">Dismiss</button>
+        </div>` : ''}
+
+      <div class="rl-stage">
+        <div class="pk-room">${typeof PK_SKYLINE_SVG === 'string' ? PK_SKYLINE_SVG : ''}</div>
+        ${rlWheelHtml(t, now)}
+      </div>
+
+      <div class="rl-status">
+        <div class="rl-status-text" id="rl-status">${escapeHtml(info.text)}</div>
+        <div class="rl-timer"><div class="rl-timer-fill" id="rl-timer-fill" style="width:${(info.pct * 100).toFixed(1)}%"></div></div>
+      </div>
+      <div class="rl-history" aria-label="Recent numbers">${hist}</div>
+      ${resultHtml}
+
+      ${rlBoardHtml(t, mine, open)}
+
+      <div class="rl-chipbar">
+        ${RL_CHIP_VALUES.map(v => `<button class="rl-chipbtn ${rlChipClass(v)}${rl.chip === v ? ' sel' : ''}" data-rl-act="chip" data-rl-key="${v}" aria-label="Select ${v} chip" aria-pressed="${rl.chip === v}">${v}</button>`).join('')}
+      </div>
+      <div class="rl-mybets">Your bets this round: <b id="rl-mytotal">${myTotal}</b></div>
+      <div class="rl-actions">
+        <button class="btn btn-secondary btn-sm" id="rl-undo" data-rl-act="undo" ${canUndo ? '' : 'disabled'}>Undo</button>
+        <button class="btn btn-danger btn-sm" id="rl-clear" data-rl-act="clear" ${open && myTotal > 0 ? '' : 'disabled'}>Clear bets</button>
+        <button class="btn btn-secondary btn-sm" id="rl-repeat" data-rl-act="repeat" ${canRepeat ? '' : 'disabled'}>Repeat last</button>
+      </div>
+      ${(state.chips ?? 0) === 0 && myTotal === 0 && typeof resetChips === 'function' ? `<button class="btn btn-primary btn-block" id="rl-get-chips" data-rl-act="getchips" style="margin-top:12px;">Get More Chips</button>` : ''}
+
+      ${rlPlayersHtml(t)}
+    </div>`;
+}
+
+// ---------------------------------------------------------------------------
+// HANDLERS — delegated on #root with pointerdown/up so a re-render between
+// press and release (snapshots arrive constantly) can't swallow a tap.
+// ---------------------------------------------------------------------------
+function rlDispatch(act, key) {
+  const rl = rlEnsureState();
+  try {
+    switch (act) {
+      case 'bet': rlPlaceBet(key, rl.chip); break;
+      case 'chip': { const v = parseInt(key, 10); if (RL_CHIP_VALUES.indexOf(v) >= 0) { rl.chip = v; render(); } break; }
+      case 'undo': rlUndoLast(); break;
+      case 'clear': rlClearBets(); break;
+      case 'repeat': rlRepeatBets(); break;
+      case 'dismiss': rl.lastError = null; render(); break;
+      case 'sound': Sound.setEnabled(!Sound.enabled); render(); break;
+      case 'getchips': resetChips(); break;
+      case 'done': leaveRouletteScreen(); state.screen = 'home'; render(); break;
+    }
+  } catch (e) {
+    console.error('roulette handler failed', e);
+    rl.lastError = rlErrMsg(e);
+    try { render(); } catch (e2) { console.error(e2); }
+  }
+}
+
+function rlBindRoot() {
+  const root = document.getElementById('root');
+  if (!root || root._rlb) return;
+  const find = e => {
+    const el = e.target && e.target.closest ? e.target.closest('[data-rl-act]') : null;
+    return el && root.contains(el) ? el : null;
+  };
+  const idOf = el => el.dataset.rlAct + ':' + (el.dataset.rlKey || '');
+  const onDown = e => {
+    if (e.button > 0) return;
+    const el = find(e);
+    state.rl.down = el && !el.disabled ? { id: idOf(el), x: e.clientX, y: e.clientY } : null;
+  };
+  const onUp = e => {
+    const d = state.rl && state.rl.down;
+    if (state.rl) state.rl.down = null;
+    if (!d) return;
+    const el = find(e);
+    if (!el || el.disabled || idOf(el) !== d.id) return;
+    if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 14) return;
+    rlDispatch(el.dataset.rlAct, el.dataset.rlKey);
+  };
+  const onCancel = () => { if (state.rl) state.rl.down = null; };
+  const onClick = e => { // keyboard / assistive activation only (detail 0)
+    if (e.detail !== 0) return;
+    const el = find(e);
+    if (el && !el.disabled) rlDispatch(el.dataset.rlAct, el.dataset.rlKey);
+  };
+  root.addEventListener('pointerdown', onDown);
+  root.addEventListener('pointerup', onUp);
+  root.addEventListener('pointercancel', onCancel);
+  root.addEventListener('click', onClick);
+  root._rlb = { onDown, onUp, onCancel, onClick };
+}
+function rlUnbindRoot() {
+  const root = document.getElementById('root');
+  if (!root || !root._rlb) return;
+  const b = root._rlb;
+  root.removeEventListener('pointerdown', b.onDown);
+  root.removeEventListener('pointerup', b.onUp);
+  root.removeEventListener('pointercancel', b.onCancel);
+  root.removeEventListener('click', b.onClick);
+  root._rlb = null;
+}
+function attachRouletteHandlers() {
+  rlEnsureState();
+  rlBindRoot();
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    rlColor, rlBetMult, rlValidKey, rlBetWins, rlBetReturn, rlSettleAmount, rlNextPhase, rlNormalize,
+    rlDefaultDoc, rlRandInt, rlSumChips, rlBettingOpen, rlSettleSource, rlWheelPlan, rlRestAngle,
+    rlStatusInfo, rlDescribe, rlFmt, RL_WHEEL_ORDER, RL_REDS, RL_BETTING_MS, RL_SPIN_MS, RL_RESULT_MS,
+  };
+}
+
+</script>
+<script>
+// ===== Craps =====
+// ============================================================================
+// CRAPS — one shared live table (`crapsTables/main`). Plain classic-script
+// fragment: runs AFTER the main script and uses its globals (db, state, auth,
+// escapeHtml, avatarHtml, applyChipDelta, resetChips, render, Sound,
+// PK_SKYLINE_SVG). Everything here is prefixed cr / CR_ / .cr-.
+//
+// Dice have no hidden information, so there is no "runner": ANY client moves
+// the table forward with a Firestore transaction that re-checks the deadline
+// (crAdvance), so only one succeeds. Each player settles THEIR OWN bets and
+// credits THEIR OWN chips (crSettleMine) through a transaction that also
+// stamps bets[uid].settledRoll, which makes settlement idempotent.
+// ============================================================================
+
+const CR_DOC_ID = 'main';
+const CR_BETTING_MS = 14000;
+const CR_ROLLING_MS = 3000;
+const CR_RESULT_MS = 6000;
+const CR_ANIM_MS = 2800;            // dice tumble length (fits inside the 3s rolling phase)
+const CR_POINTS = [4, 5, 6, 8, 9, 10];
+const CR_BET_KEYS = ['pass', 'dontPass', 'field', 'any7', 'anyCraps', 'eleven'];
+const CR_ONE_ROLL = ['field', 'any7', 'anyCraps', 'eleven'];
+const CR_LABELS = { pass: 'Pass Line', dontPass: "Don't Pass", field: 'Field', any7: 'Any Seven', anyCraps: 'Any Craps', eleven: 'Eleven' };
+const CR_CHIPS = [5, 25, 100, 500];
+const CR_FIELD_WIN = [2, 3, 4, 9, 10, 11, 12];
+
+let crUnsub = null;
+let crTimerId = null;
+
+// ----------------------------------------------------------------------------
+// PURE LOGIC (no DOM, no globals) — unit tested in craps.test.js
+// ----------------------------------------------------------------------------
+function crInt(x) {
+  const n = Math.floor(Number(x));
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+// Fill in defaults for a missing/partial table doc.
+function crNormalize(doc) {
+  const d = doc || {};
+  return {
+    rollNumber: crInt(d.rollNumber),
+    phase: (d.phase === 'betting' || d.phase === 'rolling' || d.phase === 'result') ? d.phase : 'result',
+    phaseEndsAt: Number(d.phaseEndsAt) || 0,
+    point: CR_POINTS.indexOf(d.point) >= 0 ? d.point : null,
+    roll: (d.roll && Array.isArray(d.roll.dice)) ? d.roll : null,
+    bets: (d.bets && typeof d.bets === 'object') ? d.bets : {},
+    history: Array.isArray(d.history) ? d.history : [],
+    shooterName: d.shooterName || null,
+  };
+}
+
+// The point after a roll resolves.
+function crPointAfter(pointBefore, total) {
+  if (pointBefore == null) return CR_POINTS.indexOf(total) >= 0 ? total : null;
+  return (total === pointBefore || total === 7) ? null : pointBefore;
+}
+
+function crDie(randomDie) {
+  const v = Math.floor(Number(randomDie()));
+  if (!(v >= 1 && v <= 6)) throw new Error('bad die value');
+  return v;
+}
+
+// Pure phase machine. Returns null when nothing is due, else a patch of doc
+// fields to merge. Caller supplies the clock, a die source, and a shooter name.
+function crNextPhase(doc, nowMs, randomDie, shooterName) {
+  const d = crNormalize(doc);
+  if (nowMs < d.phaseEndsAt) return null;
+  if (d.phase === 'betting') {
+    const d1 = crDie(randomDie), d2 = crDie(randomDie);
+    const total = d1 + d2;
+    const n = Math.max(d.rollNumber, d.roll ? crInt(d.roll.n) : 0) + 1;
+    return {
+      phase: 'rolling',
+      phaseEndsAt: nowMs + CR_ROLLING_MS,
+      roll: { n, dice: [d1, d2], total, pointBefore: d.point, pointAfter: crPointAfter(d.point, total) },
+      shooterName: shooterName || null,
+    };
+  }
+  if (d.phase === 'rolling') {
+    if (!d.roll) return { phase: 'betting', phaseEndsAt: nowMs + CR_BETTING_MS }; // corrupt doc: recover
+    const history = d.history.concat([{ total: d.roll.total, n: d.roll.n }]).slice(-12);
+    return {
+      phase: 'result',
+      phaseEndsAt: nowMs + CR_RESULT_MS,
+      point: d.roll.pointAfter == null ? null : d.roll.pointAfter,
+      history,
+    };
+  }
+  // result -> betting (bets that are still riding stay on the table)
+  return {
+    phase: 'betting',
+    phaseEndsAt: nowMs + CR_BETTING_MS,
+    rollNumber: d.roll ? crInt(d.roll.n) : d.rollNumber,
+  };
+}
+
+function crEntryTotal(e) {
+  if (!e) return 0;
+  return CR_BET_KEYS.reduce((s, k) => s + crInt(e[k]), 0);
+}
+
+// Resolve one player's bets against one roll.
+// credit = what to ADD to chips (stake was already deducted when betting):
+//   win -> stake + profit, push -> stake, lose -> 0. Riding pass/DP credit 0
+//   and are returned in `remaining` (they stay on the table).
+function crResolve(roll, bets) {
+  const b = {};
+  CR_BET_KEYS.forEach(k => { b[k] = crInt(bets && bets[k]); });
+  const t = roll.total;
+  const pb = roll.pointBefore == null ? null : roll.pointBefore;
+  const lines = [];
+  let credit = 0;
+  const remaining = { pass: 0, dontPass: 0 };
+  function settle(key, outcome, mult) {
+    const stake = b[key];
+    if (stake <= 0) return;
+    if (outcome === 'win') { credit += stake + stake * mult; lines.push({ label: CR_LABELS[key], outcome, net: stake * mult }); }
+    else if (outcome === 'push') { credit += stake; lines.push({ label: CR_LABELS[key], outcome, net: 0 }); }
+    else { lines.push({ label: CR_LABELS[key], outcome: 'lose', net: -stake }); }
+  }
+  let pass = 'ride', dp = 'ride';
+  if (pb == null) {
+    if (t === 7 || t === 11) { pass = 'win'; dp = 'lose'; }
+    else if (t === 2 || t === 3) { pass = 'lose'; dp = 'win'; }
+    else if (t === 12) { pass = 'lose'; dp = 'push'; }
+  } else if (t === pb) { pass = 'win'; dp = 'lose'; }
+  else if (t === 7) { pass = 'lose'; dp = 'win'; }
+  if (pass === 'ride') remaining.pass = b.pass; else settle('pass', pass, 1);
+  if (dp === 'ride') remaining.dontPass = b.dontPass; else settle('dontPass', dp, 1);
+  // One-roll bets resolve on every roll.
+  if (CR_FIELD_WIN.indexOf(t) >= 0) settle('field', 'win', t === 2 ? 2 : t === 12 ? 3 : 1); else settle('field', 'lose', 0);
+  settle('any7', t === 7 ? 'win' : 'lose', 4);
+  settle('anyCraps', (t === 2 || t === 3 || t === 12) ? 'win' : 'lose', 7);
+  settle('eleven', t === 11 ? 'win' : 'lose', 15);
+  return { credit, remaining, lines };
+}
+
+// Settle a table-doc bets entry against the latest roll. Returns
+// { entry, credit, net, lines } where `entry` is the full replacement entry.
+// If the player missed more than one roll we can't resolve them fairly, so
+// everything on the table is returned (void) rather than guessed at.
+function crSettleEntry(roll, entry) {
+  const e = entry || {};
+  const gap = roll.n - crInt(e.settledRoll);
+  let credit, remaining, lines;
+  if (gap > 1) {
+    credit = crEntryTotal(e);
+    remaining = { pass: 0, dontPass: 0 };
+    lines = [{ label: 'Bets returned (missed rolls)', outcome: 'push', net: 0 }];
+  } else {
+    const r = crResolve(roll, e);
+    credit = r.credit; remaining = r.remaining; lines = r.lines;
+  }
+  const net = lines.reduce((s, l) => s + l.net, 0);
+  return {
+    credit, net, lines,
+    entry: {
+      name: e.name || 'Player', photoURL: e.photoURL || null,
+      pass: remaining.pass, dontPass: remaining.dontPass, field: 0, any7: 0, anyCraps: 0, eleven: 0,
+      settledRoll: roll.n,
+      last: { n: roll.n, net, lines },
+    },
+  };
+}
+
+function crDescribeRoll(roll) {
+  if (!roll) return '';
+  const t = roll.total, pb = roll.pointBefore == null ? null : roll.pointBefore;
+  if (pb == null) {
+    if (t === 7 || t === 11) return 'Natural ' + t + ' — Pass Line wins';
+    if (t === 12) return "Craps 12 — Pass loses, Don't Pass pushes";
+    if (t === 2 || t === 3) return 'Craps ' + t + " — Pass loses, Don't Pass wins";
+    return 'Point is ' + t;
+  }
+  if (t === pb) return 'Point made! ' + t + ' — Pass Line wins';
+  if (t === 7) return "Seven out — Pass Line loses, Don't Pass wins";
+  return 'Rolled ' + t + ' — point is still ' + pb;
+}
+
+// Unbiased 1-6 using crypto (rejection sampling on a byte).
+function crRandomDie() {
+  const buf = new Uint8Array(1);
+  for (;;) {
+    crypto.getRandomValues(buf);
+    if (buf[0] < 252) return 1 + (buf[0] % 6);
+  }
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { crNormalize, crPointAfter, crNextPhase, crResolve, crSettleEntry, crDescribeRoll, crEntryTotal, crRandomDie, crInt };
+}
+
+// ----------------------------------------------------------------------------
+// MODULE STATE (state.cr, created lazily)
+// ----------------------------------------------------------------------------
+function crEnsure() {
+  if (!state.cr) {
+    state.cr = {
+      table: null, lastError: null, chip: 25,
+      q: Promise.resolve(), settleP: null, settleAt: 0, advanceAt: 0,
+      optChips: null, optAt: 0,
+      lastTickKey: null, rollSoundN: null, lastWinRoll: null, lockedKey: null,
+    };
+  }
+  return state.cr;
+}
+
+function crSound(name, arg) {
+  try {
+    if (typeof Sound === 'undefined' || !Sound.enabled || typeof Sound[name] !== 'function') return;
+    Sound[name](arg);
+  } catch (e) { /* sound is never worth breaking the table for */ }
+}
+
+function crMyUid() { return state.user ? state.user.uid : null; }
+function crMyName() {
+  return (state.employee && state.employee.name) || (state.user && state.user.displayName) || 'Player';
+}
+function crRef() { return db.collection('crapsTables').doc(CR_DOC_ID); }
+
+function crFail(e) {
+  console.error('craps error', e);
+  const cr = crEnsure();
+  cr.lastError = (e && e.message) || String(e);
+  try { render(); } catch (x) { /* ignore */ }
+}
+
+// Serialises my bet/clear actions so chip checks and writes can't interleave.
+function crEnqueue(fn) {
+  const cr = crEnsure();
+  const p = cr.q.then(fn);
+  cr.q = p.catch(() => {});
+  return p;
+}
+
+// Chips I can spend. state.chips lags a moment behind my own debit, so for a
+// couple of seconds we trust the lower of (snapshot, what we just computed).
+function crAvail() {
+  const cr = crEnsure();
+  let c = state.chips == null ? 0 : state.chips;
+  if (cr.optChips != null && Date.now() - cr.optAt < 2500) c = Math.min(c, cr.optChips);
+  return c;
+}
+
+// ----------------------------------------------------------------------------
+// LIFECYCLE
+// ----------------------------------------------------------------------------
+function enterCrapsScreen() {
+  const cr = crEnsure();
+  if (crUnsub || crTimerId) leaveCrapsScreen();
+  cr.table = null; cr.lastError = null;
+  cr.optChips = null; cr.optAt = 0;
+  cr.lastTickKey = null; cr.rollSoundN = null; cr.lockedKey = null;
+  cr.advanceAt = 0; cr.settleAt = 0;
+  crUnsub = crRef().onSnapshot(snap => {
+    try {
+      cr.table = snap.exists ? snap.data() : {};
+      cr.lockedKey = null;
+      crSoundsOnSnapshot();
+      crMaybeSettle();
+    } catch (e) { console.error('craps snapshot handler', e); cr.lastError = e.message || String(e); }
+    render();
+  }, err => {
+    console.error('craps listener error', err);
+    cr.lastError = err.message || String(err);
+    render();
+  });
+  crTimerId = setInterval(crTick, 1000);
+}
+
+function leaveCrapsScreen() {
+  if (crUnsub) { try { crUnsub(); } catch (e) {} crUnsub = null; }
+  if (crTimerId) { clearInterval(crTimerId); crTimerId = null; }
+  const cr = state.cr;
+  if (cr) { cr.table = null; cr.lastError = null; cr.settleP = null; }
+}
+
+// ----------------------------------------------------------------------------
+// ADVANCING THE TABLE (any client) + SETTLING MY BETS
+// ----------------------------------------------------------------------------
+function crJitter(uid) {
+  let h = 0;
+  const s = String(uid || '');
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h % 1501;
+}
+
+async function crAdvance() {
+  const ref = crRef();
+  const name = crMyName();
+  await db.runTransaction(async tx => {
+    const snap = await tx.get(ref);
+    const raw = snap.exists ? snap.data() : {};
+    // Deadline re-checked against the fresh doc: if someone else already
+    // advanced it, crNextPhase returns null and we write nothing.
+    const patch = crNextPhase(raw, Date.now(), crRandomDie, name);
+    if (!patch) return;
+    tx.set(ref, patch, { merge: true });
+  });
+}
+
+function crTick() {
+  const cr = state.cr;
+  if (!cr || state.screen !== 'craps' || !state.user) return;
+  try {
+    const d = crNormalize(cr.table);
+    const now = Date.now();
+    if (cr.table && now >= d.phaseEndsAt + crJitter(crMyUid()) && now - cr.advanceAt >= 3000) {
+      cr.advanceAt = now;
+      crAdvance().catch(e => console.error('craps advance', e));
+    }
+    crMaybeSettle();
+    crTickUi(d, now);
+  } catch (e) { console.error('crTick', e); }
+}
+
+// Update the countdown in place (no full re-render, so taps aren't swallowed).
+function crTickUi(d, now) {
+  const cr = state.cr;
+  const secs = Math.max(0, Math.ceil((d.phaseEndsAt - now) / 1000));
+  const el = document.getElementById('cr-secs');
+  if (el) el.textContent = d.phaseEndsAt ? String(secs) : '';
+  if (d.phase === 'betting') {
+    if (secs > 0 && secs <= 5) {
+      const key = d.rollNumber + ':' + secs;
+      if (cr.lastTickKey !== key) { cr.lastTickKey = key; crSound('tick'); }
+    }
+    // Deadline passed locally: re-render once so the bet zones lock.
+    if (secs === 0 && cr.lockedKey !== d.rollNumber) { cr.lockedKey = d.rollNumber; render(); }
+  }
+}
+
+function crSoundsOnSnapshot() {
+  const cr = state.cr;
+  const d = crNormalize(cr.table);
+  if (d.phase === 'rolling' && d.roll && cr.rollSoundN !== d.roll.n) {
+    cr.rollSoundN = d.roll.n;
+    // Only rattle if the roll just started (not when opening the screen mid-roll).
+    if (Date.now() - (d.phaseEndsAt - CR_ROLLING_MS) < 900) {
+      [0, 0.22, 0.45, 0.8, 1.25].forEach(t => crSound('cardFlick', t));
+    }
+  }
+}
+
+function crMaybeSettle() {
+  const cr = state.cr;
+  const uid = crMyUid();
+  if (!cr || !uid || !cr.table) return;
+  const d = crNormalize(cr.table);
+  if (d.phase === 'rolling' || !d.roll) return;
+  const e = d.bets[uid];
+  if (!e || crEntryTotal(e) <= 0 || crInt(e.settledRoll) >= d.roll.n) return;
+  const now = Date.now();
+  if (cr.settleP || now - cr.settleAt < 2500) return;
+  cr.settleAt = now;
+  crSettleMine();
+}
+
+// Settle MY entry against the latest roll. The transaction closure has no side
+// effects (it only assigns `res`, reset on every retry); chips are credited
+// afterwards and ONLY if this transaction is the one that settled.
+function crSettleMine() {
+  const cr = crEnsure();
+  if (cr.settleP) return cr.settleP;
+  const uid = crMyUid();
+  if (!uid) return Promise.resolve();
+  const ref = crRef();
+  const p = (async () => {
+    let res = null;
+    await db.runTransaction(async tx => {
+      res = null;
+      const snap = await tx.get(ref);
+      if (!snap.exists) return;
+      const d = crNormalize(snap.data());
+      if (d.phase === 'rolling' || !d.roll) return;
+      const e = d.bets[uid];
+      if (!e || crEntryTotal(e) <= 0 || crInt(e.settledRoll) >= d.roll.n) return;
+      const r = crSettleEntry(d.roll, e);
+      tx.update(ref, { ['bets.' + uid]: r.entry });
+      res = { credit: r.credit, net: r.net, n: d.roll.n };
+    });
+    if (res) {
+      cr.optAt = 0;
+      if (res.credit > 0) await applyChipDelta(res.credit);
+      if (res.net > 0 && cr.lastWinRoll !== res.n) { cr.lastWinRoll = res.n; crSound('win'); }
+    }
+  })().catch(e => crFail(e)).then(() => { cr.settleP = null; });
+  cr.settleP = p;
+  return p;
+}
+
+// ----------------------------------------------------------------------------
+// PLACING / CLEARING BETS
+// ----------------------------------------------------------------------------
+function crBettingOpen(d, now) { return d.phase === 'betting' && now < d.phaseEndsAt; }
+
+async function crPlaceBet(zone, amount) {
+  const cr = crEnsure();
+  const uid = crMyUid();
+  if (!uid || CR_BET_KEYS.indexOf(zone) < 0) return;
+  amount = crInt(amount);
+  if (amount <= 0) return;
+  try {
+    await crEnqueue(async () => {
+      if (!cr.table) throw new Error('The table is still loading.');
+      const d0 = crNormalize(cr.table);
+      if (!crBettingOpen(d0, Date.now())) throw new Error('Betting is closed — wait for the next roll.');
+      if ((zone === 'pass' || zone === 'dontPass') && d0.point != null) throw new Error('Pass Line and Don’t Pass can only be bet on the come-out roll.');
+      if (amount > crAvail()) throw new Error('Not enough chips for that bet.');
+      await crSettleMine();               // make sure my last roll is settled first
+      const before = crAvail();
+      await applyChipDelta(-amount);      // chips leave my stack at bet time
+      cr.optChips = before - amount; cr.optAt = Date.now();
+      const name = crMyName();
+      const photoURL = (state.employee && state.employee.photoURL) || null;
+      try {
+        await db.runTransaction(async tx => {
+          const snap = await tx.get(crRef());
+          if (!snap.exists) throw new Error('The table is not open yet.');
+          const d = crNormalize(snap.data());
+          if (!crBettingOpen(d, Date.now())) throw new Error('Betting is closed — wait for the next roll.');
+          if ((zone === 'pass' || zone === 'dontPass') && d.point != null) throw new Error('Pass Line and Don’t Pass can only be bet on the come-out roll.');
+          const cur = d.bets[uid] || null;
+          const lastN = d.roll ? crInt(d.roll.n) : 0;
+          if (cur && crEntryTotal(cur) > 0 && crInt(cur.settledRoll) < lastN) throw new Error('Still settling your last roll — try again in a second.');
+          const e = { name, photoURL, pass: 0, dontPass: 0, field: 0, any7: 0, anyCraps: 0, eleven: 0 };
+          if (cur) CR_BET_KEYS.forEach(k => { e[k] = crInt(cur[k]); });
+          if (cur && cur.last) e.last = cur.last;
+          e.settledRoll = lastN;
+          e[zone] += amount;
+          tx.update(crRef(), { ['bets.' + uid]: e });
+        });
+      } catch (err) {
+        cr.optAt = 0;
+        await applyChipDelta(amount);     // refund: the bet never reached the table
+        throw err;
+      }
+      crSound('chip');
+    });
+  } catch (e) { crFail(e); }
+}
+
+// Take down everything that is removable right now, refunding it.
+async function crClearBets() {
+  const cr = crEnsure();
+  const uid = crMyUid();
+  if (!uid) return;
+  try {
+    await crEnqueue(async () => {
+      if (!cr.table) return;
+      if (!crBettingOpen(crNormalize(cr.table), Date.now())) throw new Error('Betting is closed — bets can no longer be taken down.');
+      await crSettleMine();
+      let refund = 0;
+      await db.runTransaction(async tx => {
+        refund = 0;
+        const snap = await tx.get(crRef());
+        if (!snap.exists) return;
+        const d = crNormalize(snap.data());
+        if (!crBettingOpen(d, Date.now())) throw new Error('Betting is closed — bets can no longer be taken down.');
+        const cur = d.bets[uid];
+        if (!cur) return;
+        const lastN = d.roll ? crInt(d.roll.n) : 0;
+        if (crEntryTotal(cur) > 0 && crInt(cur.settledRoll) < lastN) throw new Error('Still settling your last roll — try again in a second.');
+        const e = Object.assign({}, cur);
+        CR_ONE_ROLL.forEach(k => { refund += crInt(cur[k]); e[k] = 0; });
+        if (d.point == null) { // come-out: pass/DP are fresh, so they can come down. With a point on they ride.
+          ['pass', 'dontPass'].forEach(k => { refund += crInt(cur[k]); e[k] = 0; });
+        }
+        if (refund <= 0) return;
+        e.settledRoll = lastN;
+        tx.update(crRef(), { ['bets.' + uid]: e });
+      });
+      if (refund > 0) { cr.optAt = 0; await applyChipDelta(refund); crSound('chip'); }
+    });
+  } catch (e) { crFail(e); }
+}
+
+// ----------------------------------------------------------------------------
+// RENDERING
+// ----------------------------------------------------------------------------
+const CR_PIPS = { 1: [5], 2: [1, 9], 3: [1, 5, 9], 4: [1, 3, 7, 9], 5: [1, 3, 5, 7, 9], 6: [1, 3, 4, 6, 7, 9] };
+const CR_SPIN = [
+  { sx: 1080, sy: 1260, sz: 200, hx: -86 },
+  { sx: 900, sy: 1440, sz: -240, hx: 86 },
+];
+
+function crFaceHtml(v) {
+  let cells = '';
+  for (let i = 1; i <= 9; i++) cells += CR_PIPS[v].indexOf(i) >= 0 ? '<i class="cr-pip"></i>' : '<b></b>';
+  return '<div class="cr-face cr-f' + v + '">' + cells + '</div>';
+}
+function crDieHtml(v, idx) {
+  const s = CR_SPIN[idx];
+  let faces = '';
+  for (let f = 1; f <= 6; f++) faces += crFaceHtml(f);
+  return '<div class="cr-die-hop" style="--hx:' + s.hx + 'px;--sx:' + s.sx + 'deg;--sy:' + s.sy + 'deg;--sz:' + s.sz + 'deg">' +
+    '<div class="cr-die-tilt"><div class="cr-cube cr-v' + v + '">' + faces + '</div></div></div>';
+}
+
+function crDiceHtml(d, now) {
+  const dice = d.roll ? d.roll.dice : [5, 2];
+  let cls = 'cr-dice';
+  let style = '';
+  if (d.phase === 'rolling' && d.roll) {
+    const elapsed = Math.max(0, now - (d.phaseEndsAt - CR_ROLLING_MS));
+    // Re-apply the animation from the right offset on every render so a
+    // re-render (which rebuilds the DOM) never restarts the tumble.
+    if (elapsed < CR_ANIM_MS) { cls += ' cr-rolling'; style = ' style="--dl:-' + Math.round(elapsed) + 'ms"'; }
+  }
+  return '<div class="' + cls + '"' + style + '>' + crDieHtml(dice[0], 0) + crDieHtml(dice[1], 1) + '</div>';
+}
+
+function crPointRowHtml(d) {
+  const off = d.point == null;
+  let h = '<div class="cr-points"><div class="cr-pt cr-pt-puck">' +
+    (off ? '<span class="cr-puck off">OFF</span>' : '<span class="cr-pt-lbl">POINT</span>') + '</div>';
+  CR_POINTS.forEach(p => {
+    const on = d.point === p;
+    h += '<div class="cr-pt' + (on ? ' on' : '') + '">' + (on ? '<span class="cr-puck on">ON</span>' : '') + '<span class="cr-pt-num">' + p + '</span></div>';
+  });
+  return h + '</div>';
+}
+
+function crHistoryHtml(d) {
+  const items = d.history.slice(-12).reverse();
+  if (!items.length) return '<div class="cr-hist"><span class="cr-hist-lbl">Rolls</span><span class="cr-hist-empty">none yet</span></div>';
+  return '<div class="cr-hist"><span class="cr-hist-lbl">Rolls</span>' + items.map((h, i) => {
+    const t = h.total;
+    const c = t === 7 ? ' seven' : t === 11 ? ' yo' : (t === 2 || t === 3 || t === 12) ? ' craps' : '';
+    return '<span class="cr-h' + c + (i === 0 ? ' last' : '') + '">' + t + '</span>';
+  }).join('') + '</div>';
+}
+
+function crStatusHtml(d, now) {
+  const secs = Math.max(0, Math.ceil((d.phaseEndsAt - now) / 1000));
+  const secEl = '<span class="cr-secs" id="cr-secs">' + (d.phaseEndsAt ? secs : '') + '</span>';
+  let head, sub = '', total = '';
+  if (d.phase === 'betting') {
+    head = d.point == null ? 'Come-out roll — place your bets' : 'Point is ' + d.point + ' — bets open';
+    sub = d.point == null ? 'Pass wins on 7 or 11, loses on 2, 3, 12. Any other number becomes the point.' : 'Pass wins if ' + d.point + ' rolls before a 7.';
+    total = secEl + 's';
+  } else if (d.phase === 'rolling') {
+    head = d.shooterName ? escapeHtml(d.shooterName) + ' rolls…' : 'Rolling…';
+    sub = d.point == null ? 'Come-out roll' : 'Point is ' + d.point;
+  } else {
+    head = d.roll ? escapeHtml(crDescribeRoll(d.roll)) : 'Waiting for the first roll…';
+    if (d.roll) sub = d.roll.dice[0] + ' + ' + d.roll.dice[1] + ' = ' + d.roll.total + (d.shooterName ? ' · ' + escapeHtml(d.shooterName) + ' rolled' : '');
+  }
+  const total_ms = d.phase === 'betting' ? CR_BETTING_MS : d.phase === 'rolling' ? CR_ROLLING_MS : CR_RESULT_MS;
+  const elapsed = Math.min(total_ms, Math.max(0, total_ms - (d.phaseEndsAt - now)));
+  const timer = d.phaseEndsAt ? '<div class="cr-timer"><i style="animation-duration:' + total_ms + 'ms;animation-delay:-' + Math.round(elapsed) + 'ms"></i></div>' : '';
+  return '<div class="cr-status"><div class="cr-head">' + head + (total ? ' <span class="cr-count">' + total + '</span>' : '') + '</div>' +
+    (sub ? '<div class="cr-sub">' + sub + '</div>' : '') + timer + '</div>';
+}
+
+function crSlotHtml(e, key, ride) {
+  const v = e ? crInt(e[key]) : 0;
+  if (!v) return '<span class="cr-slot"></span>';
+  return '<span class="cr-slot"><span class="cr-badge' + (ride ? ' ride' : '') + '"><span class="chip-icon"></span>' + v + (ride ? '<em>riding</em>' : '') + '</span></span>';
+}
+
+function crBoardHtml(d, now, mine) {
+  const open = crBettingOpen(d, now);
+  const passOk = open && d.point == null;
+  const rideP = d.point != null;
+  function zone(key, cls, inner, ok, ride) {
+    return '<button class="cr-zone ' + cls + '" data-cr-zone="' + key + '"' + (ok ? '' : ' disabled') + '>' + inner + crSlotHtml(mine, key, ride) + '</button>';
+  }
+  const fieldNums = CR_FIELD_WIN.map(n => '<span class="cr-fn' + (n === 2 || n === 12 ? ' x' : '') + '">' + n + (n === 2 ? '<sup>2:1</sup>' : n === 12 ? '<sup>3:1</sup>' : '') + '</span>').join('');
+  return '<div class="cr-board">' +
+    zone('field', 'cr-field', '<span class="cr-zn">Field</span><span class="cr-fnums">' + fieldNums + '</span><span class="cr-pay">Pays 1 to 1 · 5 6 7 8 lose</span>', open, false) +
+    '<div class="cr-row2">' +
+      zone('pass', 'cr-pass', '<span class="cr-zn">Pass Line</span><span class="cr-pay">1 to 1 · ' + (passOk ? 'come-out only' : rideP ? 'point is on' : 'closed') + '</span>', passOk, rideP) +
+      zone('dontPass', 'cr-dp', '<span class="cr-zn">Don’t Pass Bar</span><span class="cr-pay">1 to 1 · bar 12</span>', passOk, rideP) +
+    '</div>' +
+    '<div class="cr-row3">' +
+      zone('any7', 'cr-prop', '<span class="cr-zn">Any Seven</span><span class="cr-pay big">4 to 1</span>', open, false) +
+      zone('anyCraps', 'cr-prop', '<span class="cr-zn">Any Craps</span><span class="cr-pay big">7 to 1</span>', open, false) +
+      zone('eleven', 'cr-prop', '<span class="cr-zn">Eleven</span><span class="cr-pay big">15 to 1</span>', open, false) +
+    '</div></div>';
+}
+
+function crLineText(l) {
+  if (l.outcome === 'win') return l.label + ' wins +' + l.net;
+  if (l.outcome === 'lose') return l.label + ' loses −' + Math.abs(l.net);
+  return l.label + ' pushes';
+}
+function crNetText(n) { return n > 0 ? '+' + n : n < 0 ? '−' + Math.abs(n) : '0'; }
+
+function crResultHtml(d, mine) {
+  if (!mine || !mine.last || !d.roll || d.phase === 'rolling' || mine.last.n !== d.roll.n || !mine.last.lines.length) return '';
+  const l = mine.last;
+  return '<div class="cr-panel cr-res"><div class="cr-ptitle">Your results — roll ' + d.roll.total + '</div>' +
+    l.lines.map(x => '<div class="cr-line ' + x.outcome + '"><span>' + escapeHtml(crLineText(x)) + '</span></div>').join('') +
+    '<div class="cr-line net ' + (l.net > 0 ? 'win' : l.net < 0 ? 'lose' : 'push') + '"><span>Net</span><strong>' + crNetText(l.net) + '</strong></div></div>';
+}
+
+function crBreakdown(e) {
+  return CR_BET_KEYS.filter(k => crInt(e[k]) > 0).map(k => CR_LABELS[k] + ' ' + crInt(e[k])).join(' · ');
+}
+
+function crTablePanelHtml(d) {
+  const uid = crMyUid();
+  const rows = Object.keys(d.bets).filter(u => u !== uid).map(u => ({ u, e: d.bets[u] || {} }))
+    .map(x => {
+      const showLast = x.e.last && d.roll && x.e.last.n === d.roll.n && d.phase !== 'rolling';
+      return { u: x.u, e: x.e, total: crEntryTotal(x.e), last: showLast ? x.e.last : null };
+    })
+    .filter(x => x.total > 0 || x.last)
+    .sort((a, b) => b.total - a.total).slice(0, 12);
+  let body;
+  if (!rows.length) body = '<div class="cr-empty">No other players have bets down.</div>';
+  else body = rows.map(x => {
+    const net = x.last ? '<span class="cr-pnet ' + (x.last.net > 0 ? 'win' : x.last.net < 0 ? 'lose' : 'push') + '">' + crNetText(x.last.net) + '</span>' : '';
+    return '<div class="cr-prow">' + avatarHtml(x.e.name || 'Player', x.e.photoURL, 30) +
+      '<div class="cr-pinfo"><div class="cr-pname">' + escapeHtml(x.e.name || 'Player') + '</div>' +
+      '<div class="cr-pbets">' + (x.total > 0 ? escapeHtml(crBreakdown(x.e)) : 'nothing riding') + '</div></div>' +
+      '<div class="cr-ptotal">' + (x.total > 0 ? '<span class="chip-icon"></span>' + x.total : '') + net + '</div></div>';
+  }).join('');
+  return '<div class="cr-panel"><div class="cr-ptitle">At the table</div>' + body + '</div>';
+}
+
+function renderCrapsScreen() {
+  const cr = crEnsure();
+  const now = Date.now();
+  const topbar = '<div class="topbar"><h1 class="page-title casino-title" style="font-size:24px;">Craps</h1>' +
+    '<div style="display:flex;align-items:center;gap:8px;">' +
+    '<button class="sound-toggle" id="cr-sound-toggle" title="' + (Sound.enabled ? 'Mute sound' : 'Unmute sound') + '">' + (Sound.enabled ? '🔊' : '🔇') + '</button>' +
+    '<button class="btn btn-ghost btn-sm" id="cr-done">Done</button></div></div>';
+  const err = cr.lastError ? '<div class="cr-err"><span>' + escapeHtml(cr.lastError) + '</span><button class="btn btn-ghost btn-sm" id="cr-dismiss-error" style="flex-shrink:0;">Dismiss</button></div>' : '';
+  if (!cr.table) return topbar + '<div class="content">' + err + '<div style="padding:40px;text-align:center;color:var(--text-tertiary);">Loading table…</div></div>';
+  const d = crNormalize(cr.table);
+  const uid = crMyUid();
+  const mine = uid ? d.bets[uid] : null;
+  const avail = crAvail();
+  const mineTotal = crEntryTotal(mine);
+  const sky = (typeof PK_SKYLINE_SVG !== 'undefined') ? PK_SKYLINE_SVG : '';
+  return topbar + '<div class="content cr-content">' + err +
+    '<div class="chip-count" style="justify-content:center;color:var(--gold-bright);margin-bottom:12px;"><span class="chip-icon"></span>' + (state.chips == null ? 0 : state.chips) + ' chips</div>' +
+    '<div class="cr-stage"><div class="cr-room">' + sky + '</div>' +
+      crDiceHtml(d, now) + crPointRowHtml(d) + crStatusHtml(d, now) + crHistoryHtml(d) + '</div>' +
+    crBoardHtml(d, now, mine) +
+    '<div class="cr-bar"><div class="cr-chips">' +
+      CR_CHIPS.map(v => '<button class="cr-chip c' + v + (cr.chip === v ? ' sel' : '') + '" data-cr-chip="' + v + '" aria-label="Chip ' + v + '"><span>' + v + '</span></button>').join('') +
+    '</div><div class="cr-barbtns"><div class="cr-onbet">On table <strong>' + mineTotal + '</strong></div><button class="cr-clear" id="cr-clear">Clear</button></div></div>' +
+    ((state.chips || 0) === 0 && mineTotal === 0 ? '<button class="btn btn-ghost btn-sm btn-block" id="cr-get-chips" style="margin-bottom:12px;">Get More Chips</button>' : '') +
+    crResultHtml(d, mine) + crTablePanelHtml(d) +
+    '<div class="cr-foot">Chips leave your stack when you bet. Pass and Don’t Pass ride until the point is made or a 7 is rolled; the other bets resolve every roll.</div>' +
+  '</div>';
+}
+
+function attachCrapsHandlers() {
+  const cr = crEnsure();
+  const on = (id, fn) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', () => { try { fn(); } catch (e) { crFail(e); } });
+  };
+  on('cr-sound-toggle', () => { Sound.setEnabled(!Sound.enabled); render(); });
+  on('cr-dismiss-error', () => { cr.lastError = null; render(); });
+  on('cr-done', () => { leaveCrapsScreen(); state.screen = 'home'; render(); });
+  on('cr-clear', () => { crClearBets(); });
+  on('cr-get-chips', () => { resetChips(); });
+  document.querySelectorAll('[data-cr-chip]').forEach(el => el.addEventListener('click', () => {
+    cr.chip = parseInt(el.dataset.crChip, 10) || 25;
+    render();
+  }));
+  document.querySelectorAll('[data-cr-zone]').forEach(el => el.addEventListener('click', () => {
+    try { crPlaceBet(el.dataset.crZone, cr.chip); } catch (e) { crFail(e); }
+  }));
+}
+
 </script>
 </body>
 </html>
